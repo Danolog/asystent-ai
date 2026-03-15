@@ -23,7 +23,6 @@ export function ChatArea({ conversationId, initialMessages }: ChatAreaProps) {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -31,7 +30,6 @@ export function ChatArea({ conversationId, initialMessages }: ChatAreaProps) {
   useEffect(() => {
     async function loadMessages() {
       if (!conversationId) return;
-      setIsLoading(true);
       try {
         const res = await fetch(`/api/conversations/${conversationId}`);
         if (res.ok) {
@@ -46,8 +44,6 @@ export function ChatArea({ conversationId, initialMessages }: ChatAreaProps) {
         }
       } catch {
         // silently fail
-      } finally {
-        setIsLoading(false);
       }
     }
     if (!initialMessages?.length) {

@@ -11,20 +11,23 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState("");
   const [saved, setSaved] = useState(false);
 
-  const fetchMemories = async () => {
-    try {
-      const res = await fetch("/api/memory");
-      if (res.ok) setMemories(await res.json());
-    } catch { /* silently fail */ }
-  };
-
   useEffect(() => {
-    if (activeTab === "memory") fetchMemories();
+    if (activeTab !== "memory") return;
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch("/api/memory");
+        if (res.ok && !cancelled) setMemories(await res.json());
+      } catch { /* silently fail */ }
+    }
+    load();
+    return () => { cancelled = true; };
   }, [activeTab]);
 
   const handleDeleteMemory = async (id: string) => {
     await fetch(`/api/memory/${id}`, { method: "DELETE" });
-    await fetchMemories();
+    const res = await fetch("/api/memory");
+    if (res.ok) setMemories(await res.json());
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {

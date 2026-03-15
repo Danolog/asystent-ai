@@ -20,27 +20,28 @@ export function Sidebar({
   );
   const [isOpen, setIsOpen] = useState(false);
 
-  const fetchConversations = async () => {
-    try {
-      const res = await fetch("/api/conversations");
-      if (res.ok) {
-        const data = await res.json();
-        setConversations(data);
-      }
-    } catch {
-      // silently fail
-    }
-  };
-
   useEffect(() => {
-    fetchConversations();
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch("/api/conversations");
+        if (res.ok && !cancelled) {
+          setConversations(await res.json());
+        }
+      } catch {
+        // silently fail
+      }
+    }
+    load();
+    return () => { cancelled = true; };
   }, [activeConversationId]);
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm("Czy na pewno chcesz usunąć tę rozmowę?")) return;
     await fetch(`/api/conversations/${id}`, { method: "DELETE" });
-    setConversations((prev) => prev.filter((c) => c.id !== id));
+    const res = await fetch("/api/conversations");
+    if (res.ok) setConversations(await res.json());
     if (activeConversationId === id) {
       onNewConversation();
     }

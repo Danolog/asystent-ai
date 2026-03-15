@@ -7,9 +7,7 @@ import {
   integer,
   jsonb,
   index,
-  check,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
 
 // ============================================================
 // AUTH TABLES (managed by better-auth)
