@@ -1,0 +1,184 @@
+import { db } from "@/lib/db";
+import { documents, documentChunks } from "@/lib/db/schema";
+import { eq, sql } from "drizzle-orm";
+import type { UUID, DocumentListItem } from "@/types";
+
+const CHUNK_SIZE = 1000; // characters per chunk
+const CHUNK_OVERLAP = 200;
+
+export async function listDocuments(userId: UUID): Promise<{
+  documents: DocumentListItem[];
+  usage: { usedBytes: number; maxBytes: number; documentCount: number };
+}> {
+  const rows = await db
+    .select()
+    .from(documents)
+    .where(eq(documents.userId, userId))
+    .orderBy(documents.createdAt);
+
+  const totalBytes = rows.reduce((sum, d) => sum + d.sizeBytes, 0);
+
+  return {
+    documents: rows.map((d) => ({
+      id: d.id,
+      name: d.name,
+      mimeType: d.mimeType,
+      sizeBytes: d.sizeBytes,
+      status: d.status as "processing" | "ready" | "error",
+      chunkCount: d.chunkCount || 0,
+      createdAt: d.createdAt.toISOString(),
+    })),
+    usage: {
+      usedBytes: totalBytes,
+      maxBytes: 50 * 1024 * 1024, // 50MB limit
+      documentCount: rows.length,
+    },
+  };
+}
+
+export async function createDocument(
+  userId: UUID,
+  name: string,
+  mimeType: string,
+  sizeBytes: number,
+  blobUrl: string
+) {
+  const [doc] = await db
+    .insert(documents)
+    .values({
+      userId,
+      name,
+      mimeType,
+      sizeBytes,
+      blobUrl,
+      status: "processing",
+    })
+    .returning();
+  return doc;
+}
+
+export async function processDocument(documentId: UUID, textContent: string) {
+  try {
+    // Chunk the text
+    const chunks = chunkText(textContent, CHUNK_SIZE, CHUNK_OVERLAP);
+
+    // Store chunks (without embeddings for now — placeholder)
+    for (let i = 0; i < chunks.length; i++) {
+      await db.insert(documentChunks).values({
+        documentId,
+        chunkIndex: i,
+        content: chunks[i],
+        embedding: "[]", // placeholder — real embeddings via Voyage API later
+      });
+    }
+
+    // Update document status
+    await db
+      .update(documents)
+      .set({
+        status: "ready",
+        chunkCount: chunks.length,
+        updatedAt: new Date(),
+      })
+      .where(eq(documents.id, documentId));
+  } catch (error) {
+    await db
+      .update(documents)
+      .set({
+        status: "error",
+        errorMessage:
+          error instanceof Error ? error.message : "Processing failed",
+        updatedAt: new Date(),
+      })
+      .where(eq(documents.id, documentId));
+  }
+}
+
+export async function deleteDocument(
+  documentId: UUID,
+  userId: UUID
+): Promise<boolean> {
+  const [doc] = await db
+    .select()
+    .from(documents)
+    .where(eq(documents.id, documentId));
+
+  if (!doc || doc.userId !== userId) return false;
+
+  // Cascade delete handles chunks
+  await db.delete(documents).where(eq(documents.id, documentId));
+  return true;
+}
+
+export async function searchDocumentChunks(
+  userId: UUID,
+  query: string,
+  limit: number = 5
+): Promise<Array<{ content: string; documentName: string; pageNumber: number | null }>> {
+  // Simple keyword search for MVP (semantic search with pgvector later)
+  const queryTerms = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length > 2);
+
+  if (queryTerms.length === 0) return [];
+
+  // Get all user's document chunks
+  const userDocs = await db
+    .select({ id: documents.id, name: documents.name })
+    .from(documents)
+    .where(eq(documents.userId, userId));
+
+  if (userDocs.length === 0) return [];
+
+  const docIds = userDocs.map((d) => d.id);
+  const docNameMap = new Map(userDocs.map((d) => [d.id, d.name]));
+
+  const allChunks = await db
+    .select()
+    .from(documentChunks)
+    .where(
+      sql`${documentChunks.documentId} IN (${sql.join(
+        docIds.map((id) => sql`${id}`),
+        sql`, `
+      )})`
+    );
+
+  // Score chunks by keyword match
+  const scored = allChunks
+    .map((chunk) => {
+      const lowerContent = chunk.content.toLowerCase();
+      const score = queryTerms.reduce(
+        (s, term) => s + (lowerContent.includes(term) ? 1 : 0),
+        0
+      );
+      return { chunk, score };
+    })
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  return scored.map((s) => ({
+    content: s.chunk.content,
+    documentName: docNameMap.get(s.chunk.documentId) || "Unknown",
+    pageNumber: s.chunk.pageNumber,
+  }));
+}
+
+function chunkText(
+  text: string,
+  chunkSize: number,
+  overlap: number
+): string[] {
+  const chunks: string[] = [];
+  let start = 0;
+
+  while (start < text.length) {
+    const end = Math.min(start + chunkSize, text.length);
+    chunks.push(text.slice(start, end));
+    start = end - overlap;
+    if (start + overlap >= text.length) break;
+  }
+
+  return chunks.filter((c) => c.trim().length > 0);
+}
