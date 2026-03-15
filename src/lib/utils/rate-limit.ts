@@ -31,10 +31,6 @@ export function checkRateLimit(userId: string, path: string) {
   }
 }
 
-// Cleanup stale entries periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of requestCounts) {
-    if (now > entry.resetAt) requestCounts.delete(key);
-  }
-}, 60_000);
+// Note: On Vercel serverless, in-memory Map resets on cold start.
+// Rate limiting is per-function-instance only. For production scale,
+// upgrade to Upstash Redis (@upstash/ratelimit).
