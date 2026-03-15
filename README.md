@@ -1,36 +1,116 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Asystent Osobisty AI
 
-## Getting Started
+Osobisty asystent AI z pamięcią długoterminową, bazą wiedzy RAG, wyszukiwaniem w internecie, komunikacją głosową i proaktywnymi powiadomieniami WhatsApp. Dostępny przez własną aplikację webową, zdeployowany na Vercel.
 
-First, run the development server:
+## Tech Stack
+
+| Warstwa | Technologia |
+|---------|-------------|
+| Frontend | Next.js 15 (App Router), React 19, Tailwind CSS 4 |
+| Backend | Next.js API Routes (Route Handlers) |
+| Database | Neon PostgreSQL + pgvector |
+| ORM | Drizzle ORM |
+| Auth | better-auth (email/password, database sessions) |
+| AI | Vercel AI SDK + Anthropic Claude (Sonnet) |
+| Web Search | Tavily API |
+| File Storage | Vercel Blob |
+| Notifications | CallMeBot (WhatsApp) |
+| Hosting | Vercel (serverless) |
+| Tests | Vitest (unit) + Playwright (E2E) |
+
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# 1. Clone
+git clone https://github.com/Danolog/asystent-ai.git
+cd asystent-ai
+
+# 2. Install
+npm install
+
+# 3. Environment
+cp .env.example .env.local
+# Fill in: ANTHROPIC_API_KEY, DATABASE_URL (Neon), BETTER_AUTH_SECRET
+
+# 4. Database
+npm run db:push    # Push schema to Neon
+
+# 5. Run
+npm run dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Chat z AI** — streaming responses, markdown rendering, source badges
+- **Pamięć krótkoterminowa** — kontekst w ramach sesji
+- **Pamięć długoterminowa** — zapamiętywanie faktów między sesjami
+- **Baza wiedzy (RAG)** — upload PDF/TXT/DOCX, odpytywanie dokumentów
+- **Web Search** — automatyczne wyszukiwanie aktualnych informacji (Tavily)
+- **Powiadomienia WhatsApp** — przypomnienia o płatnościach i terminach
+- **Tool Use** — AI automatycznie korzysta z narzędzi (search, memory, RAG)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Architecture
 
-## Learn More
+Modular Monolith — folder-based modules:
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/              # Next.js pages + API routes
+├── modules/          # Business logic
+│   ├── chat/         # Chat service, AI tools
+│   ├── rag/          # Document processing, search
+│   ├── memory/       # Long-term memory
+│   ├── notifications/# WhatsApp notifications
+│   └── auth/         # Authentication
+├── components/       # React components (Atomic Design)
+├── lib/              # Shared: db, ai client, utils
+└── types/            # TypeScript types (from interface contracts)
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API Endpoints
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /api/chat | Send message, streaming AI response |
+| GET/POST | /api/conversations | List / create conversations |
+| GET/DELETE | /api/conversations/[id] | Get messages / delete |
+| GET/POST | /api/documents | List / upload documents |
+| DELETE | /api/documents/[id] | Delete document |
+| GET | /api/memory | List memories |
+| DELETE | /api/memory/[id] | Delete memory |
+| GET/POST | /api/notifications | List / create notifications |
+| PUT/DELETE | /api/notifications/[id] | Update / delete |
+| POST | /api/search | Web search (Tavily) |
+| GET/PUT | /api/user/profile | Get / update profile |
+| GET | /api/health | Health check |
 
-## Deploy on Vercel
+## Testing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm test              # Unit tests (Vitest)
+npm run test:watch    # Watch mode
+npx playwright test   # E2E tests (requires running app)
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deployment
+
+Auto-deployed via Vercel on push to `main`. See `devops.md` for details.
+
+```bash
+# Manual deploy
+vercel --prod
+
+# Database migrations
+npm run db:push
+```
+
+## Environment Variables
+
+See `.env.example` for all required variables. Key ones:
+- `ANTHROPIC_API_KEY` — Claude API key
+- `DATABASE_URL` — Neon PostgreSQL connection string
+- `BETTER_AUTH_SECRET` — Random 32+ char string for session encryption
+
+## License
+
+Private project.
