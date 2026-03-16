@@ -5,5 +5,5 @@ export const anthropic = createAnthropic({
 });
 
 // Model shortcuts
-export const chatModel = anthropic("claude-sonnet-4-6-20250514");
+export const chatModel = anthropic("claude-sonnet-4-5-20250929");
 export const fastModel = anthropic("claude-haiku-4-5-20251001");
