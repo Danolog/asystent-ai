@@ -214,13 +214,9 @@ export function createChatTools(userId: UUID, conversationId: UUID) {
 
     searchGoogleDocs: tool({
       description:
-        "Przeszukaj i czytaj dokumenty Google Docs użytkownika. Używaj gdy użytkownik pyta o treść swoich dokumentów Google.",
+        "Przeszukaj dokumenty Google Docs użytkownika. Zwraca listę dokumentów (bez treści). Aby odczytać treść, użyj readGoogleDoc z ID dokumentu.",
       inputSchema: z.object({
         query: z.string().describe("Szukaj dokumentów zawierających ten tekst"),
-        readDocumentId: z
-          .string()
-          .optional()
-          .describe("ID dokumentu do odczytania pełnej treści (jeśli znane)"),
       }),
       execute: async (input) => {
         try {
@@ -229,17 +225,6 @@ export function createChatTools(userId: UUID, conversationId: UUID) {
             return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
           }
 
-          // Read specific document
-          if (input.readDocumentId) {
-            const doc = await readGoogleDoc(userId, input.readDocumentId);
-            const truncated =
-              doc.text.length > 3000
-                ? doc.text.slice(0, 3000) + "\n...(skrócono)"
-                : doc.text;
-            return `**${doc.title}**\n\n${truncated}`;
-          }
-
-          // Search documents
           const docs = await listGoogleDocs(userId, {
             query: input.query,
             maxResults: 5,
@@ -249,28 +234,44 @@ export function createChatTools(userId: UUID, conversationId: UUID) {
             return "Nie znalazłem dokumentów pasujących do zapytania.";
           }
 
-          // Read the first matching document
-          const firstDoc = await readGoogleDoc(userId, docs[0].id);
-          const truncated =
-            firstDoc.text.length > 2000
-              ? firstDoc.text.slice(0, 2000) + "\n...(skrócono)"
-              : firstDoc.text;
-
-          const otherDocs =
-            docs.length > 1
-              ? `\n\nInne pasujące dokumenty:\n${docs
-                  .slice(1)
-                  .map((d, i) => `${i + 2}. ${d.name} (${d.webViewLink})`)
-                  .join("\n")}`
-              : "";
-
-          return `**${firstDoc.title}**\n\n${truncated}${otherDocs}`;
+          return docs
+            .map((d, i) => `${i + 1}. **${d.name}**\n   ID: \`${d.id}\`\n   Link: ${d.webViewLink}`)
+            .join("\n\n") + "\n\nAby odczytać treść, użyj readGoogleDoc z ID dokumentu.";
         } catch (error) {
           const msg = error instanceof Error ? error.message : "Nieznany błąd";
           if (msg.includes("not connected") || msg.includes("GOOGLE_NOT_CONNECTED")) {
             return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
           }
           return `Nie udało się przeszukać dokumentów: ${msg}`;
+        }
+      },
+    }),
+
+    readGoogleDoc: tool({
+      description:
+        "Odczytaj pełną treść konkretnego dokumentu Google Docs po jego ID. Używaj po searchGoogleDocs.",
+      inputSchema: z.object({
+        documentId: z.string().describe("ID dokumentu Google Docs (uzyskane z searchGoogleDocs)"),
+      }),
+      execute: async (input) => {
+        try {
+          const connected = await isGoogleConnected(userId);
+          if (!connected) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+
+          const doc = await readGoogleDoc(userId, input.documentId);
+          const truncated =
+            doc.text.length > 3000
+              ? doc.text.slice(0, 3000) + "\n...(skrócono)"
+              : doc.text;
+          return `**${doc.title}**\n\n${truncated}`;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Nieznany błąd";
+          if (msg.includes("not connected") || msg.includes("GOOGLE_NOT_CONNECTED")) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+          return `Nie udało się odczytać dokumentu: ${msg}`;
         }
       },
     }),

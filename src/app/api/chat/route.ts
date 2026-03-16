@@ -71,7 +71,8 @@ export async function POST(request: Request) {
       ? `\n\nMasz dostęp do Google Calendar, Google Docs i Gmail użytkownika:
 - createCalendarEvent: Utwórz wydarzenie w kalendarzu. Używaj gdy użytkownik mówi o spotkaniu/terminie z datą.
 - listCalendarEvents: Pokaż nadchodzące wydarzenia. Używaj gdy pyta "co mam w kalendarzu?", "jakie mam spotkania?".
-- searchGoogleDocs: Przeszukaj dokumenty Google Docs. Używaj gdy pyta o treść swoich dokumentów.
+- searchGoogleDocs: Przeszukaj dokumenty Google Docs (zwraca listę z ID). Używaj gdy pyta o dokumenty.
+- readGoogleDoc: Odczytaj treść dokumentu po ID. Używaj po searchGoogleDocs aby zobaczyć treść.
 - searchGmail: Przeszukaj emaile. Używaj gdy pyta o maile, wiadomości, korespondencję. Obsługuje składnię Gmail (from:, subject:, is:unread itp.).
 - readGmail: Odczytaj pełną treść emaila po ID. Używaj po searchGmail aby zobaczyć całą wiadomość.
 - createGmailDraft: Utwórz szkic emaila. Używaj gdy użytkownik prosi o napisanie/przygotowanie maila.
