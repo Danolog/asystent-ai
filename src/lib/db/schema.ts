@@ -83,6 +83,35 @@ export const accounts = pgTable(
 );
 
 // ============================================================
+// PASSKEYS (WebAuthn / biometric login)
+// ============================================================
+
+export const passkeys = pgTable(
+  "passkeys",
+  {
+    id: text("id").primaryKey(),
+    name: text("name"),
+    publicKey: text("public_key").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    credentialID: text("credential_id").notNull().unique(),
+    counter: integer("counter").notNull().default(0),
+    deviceType: text("device_type"),
+    backedUp: boolean("backed_up").default(false),
+    transports: text("transports"),
+    aaguid: text("aaguid"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_passkeys_user_id").on(table.userId),
+    index("idx_passkeys_credential_id").on(table.credentialID),
+  ]
+);
+
+// ============================================================
 // CONVERSATIONS & MESSAGES
 // ============================================================
 

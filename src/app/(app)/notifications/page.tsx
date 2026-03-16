@@ -67,14 +67,14 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+    <div className="mx-auto w-full max-w-4xl p-4 md:p-6 overflow-y-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <h1 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200">
           🔔 Powiadomienia
         </h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600"
+          className="flex items-center justify-center gap-2 rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600"
         >
           <Plus className="h-4 w-4" />
           Nowe powiadomienie
@@ -101,7 +101,7 @@ export default function NotificationsPage() {
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data i godzina</label>
                 <input
@@ -157,14 +157,14 @@ export default function NotificationsPage() {
                 n.isActive ? "border-gray-200 dark:border-gray-700" : "border-gray-100 bg-gray-50 opacity-60 dark:border-gray-800 dark:bg-gray-800/50"
               }`}
             >
-              <div>
-                <p className="font-medium text-gray-800 dark:text-gray-200">{n.content}</p>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{n.content}</p>
                 <p className="text-xs text-gray-500">
                   {new Date(n.scheduledAt).toLocaleString("pl")} · {recurrenceLabels[n.recurrence]}
                   {n.isActive ? " · 🟢 Aktywne" : " · ⏸ Wstrzymane"}
                 </p>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={() => handleToggle(n.id, n.isActive)}
                   className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700"

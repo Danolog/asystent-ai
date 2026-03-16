@@ -99,7 +99,7 @@ export function Sidebar({
       {/* Mobile toggle button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed left-4 top-4 z-50 rounded-lg bg-white p-2 shadow-md md:hidden dark:bg-gray-800"
+        className="absolute left-3 top-3 z-50 rounded-lg bg-white p-2 shadow-md md:hidden dark:bg-gray-800"
       >
         {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
@@ -112,9 +112,9 @@ export function Sidebar({
         />
       )}
 
-      {/* Sidebar - mobile drawer */}
+      {/* Sidebar - mobile drawer / desktop fixed */}
       <div
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-gray-200 bg-white transition-transform md:relative md:translate-x-0 dark:border-gray-700 dark:bg-gray-900 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-gray-200 bg-white pt-14 transition-transform md:relative md:pt-0 md:translate-x-0 dark:border-gray-700 dark:bg-gray-900 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

@@ -1,15 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, Trash2, Brain } from "lucide-react";
+import { Save, Trash2, Brain, Fingerprint, Plus, Shield } from "lucide-react";
+import { authClient } from "@/lib/auth/client";
 import type { MemoryListItem } from "@/types";
 
+interface PasskeyItem {
+  id: string;
+  name?: string;
+  createdAt: string;
+}
+
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<"profile" | "memory" | "preferences">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "memory" | "preferences" | "security">("profile");
   const [memories, setMemories] = useState<MemoryListItem[]>([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [saved, setSaved] = useState(false);
+  const [passkeys, setPasskeys] = useState<PasskeyItem[]>([]);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [passkeyError, setPasskeyError] = useState<string | null>(null);
+  const [passkeySuccess, setPasskeySuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeTab !== "memory") return;
@@ -21,6 +32,27 @@ export default function SettingsPage() {
       } catch { /* silently fail */ }
     }
     load();
+    return () => { cancelled = true; };
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "security") return;
+    let cancelled = false;
+    async function loadPasskeys() {
+      try {
+        const res = await authClient.passkey.listUserPasskeys();
+        if (!cancelled && res?.data) {
+          setPasskeys(
+            res.data.map((p) => ({
+              id: p.id,
+              name: p.name,
+              createdAt: new Date(p.createdAt).toISOString(),
+            }))
+          );
+        }
+      } catch { /* silently fail */ }
+    }
+    loadPasskeys();
     return () => { cancelled = true; };
   }, [activeTab]);
 
@@ -43,15 +75,58 @@ export default function SettingsPage() {
     } catch { /* silently fail */ }
   };
 
+  const handleAddPasskey = async () => {
+    setPasskeyError(null);
+    setPasskeySuccess(null);
+    setPasskeyLoading(true);
+    try {
+      const res = await authClient.passkey.addPasskey({
+        name: `Passkey ${new Date().toLocaleDateString("pl")}`,
+      });
+      if (res?.error) {
+        setPasskeyError(res.error.message || "Nie udało się dodać passkey");
+      } else {
+        setPasskeySuccess("Passkey dodany pomyślnie!");
+        setTimeout(() => setPasskeySuccess(null), 3000);
+        // Reload passkeys list
+        const listRes = await authClient.passkey.listUserPasskeys();
+        if (listRes?.data) {
+          setPasskeys(
+            listRes.data.map((p) => ({
+              id: p.id,
+              name: p.name,
+              createdAt: new Date(p.createdAt).toISOString(),
+            }))
+          );
+        }
+      }
+    } catch {
+      setPasskeyError("Urządzenie nie obsługuje passkeys lub operacja została anulowana");
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
+
+  const handleDeletePasskey = async (id: string) => {
+    setPasskeyError(null);
+    try {
+      await authClient.passkey.deletePasskey({ id });
+      setPasskeys((prev) => prev.filter((p) => p.id !== id));
+    } catch {
+      setPasskeyError("Nie udało się usunąć passkey");
+    }
+  };
+
   const tabs = [
     { id: "profile" as const, label: "Profil" },
     { id: "memory" as const, label: "Pamięć" },
+    { id: "security" as const, label: "Bezpieczeństwo" },
     { id: "preferences" as const, label: "Preferencje" },
   ];
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
-      <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-6">
+    <div className="mx-auto w-full max-w-4xl p-4 md:p-6 overflow-y-auto">
+      <h1 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-6">
         ⚙️ Ustawienia
       </h1>
 
@@ -132,6 +207,78 @@ export default function SettingsPage() {
                   <button
                     onClick={() => handleDeleteMemory(m.id)}
                     className="rounded p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "security" && (
+        <div className="max-w-md">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-medium text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                <Fingerprint className="h-5 w-5" />
+                Passkeys (biometria)
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Loguj się odciskiem palca, Face ID lub Windows Hello.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleAddPasskey}
+            disabled={passkeyLoading}
+            className="mb-4 flex items-center gap-2 rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            {passkeyLoading ? "Rejestrowanie..." : "Dodaj Passkey"}
+          </button>
+
+          {passkeyError && (
+            <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
+              {passkeyError}
+            </div>
+          )}
+
+          {passkeySuccess && (
+            <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-600 dark:bg-green-900/20 dark:text-green-400">
+              {passkeySuccess}
+            </div>
+          )}
+
+          {passkeys.length === 0 ? (
+            <div className="rounded-lg border-2 border-dashed border-gray-300 p-8 text-center dark:border-gray-600">
+              <Shield className="mx-auto h-10 w-10 text-gray-400" />
+              <p className="mt-3 text-gray-500">Brak zarejestrowanych passkeys.</p>
+              <p className="text-sm text-gray-400">Dodaj passkey, aby logować się biometrycznie.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {passkeys.map((pk) => (
+                <div
+                  key={pk.id}
+                  className="flex items-center justify-between rounded-lg border border-gray-200 p-3 dark:border-gray-700"
+                >
+                  <div className="flex items-center gap-3">
+                    <Fingerprint className="h-5 w-5 text-indigo-500" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                        {pk.name || "Passkey"}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Dodano {new Date(pk.createdAt).toLocaleDateString("pl")}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeletePasskey(pk.id)}
+                    className="rounded p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

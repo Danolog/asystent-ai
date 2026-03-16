@@ -33,22 +33,22 @@ export default function ChatPage() {
   }, []);
 
   return (
-    <div className="flex flex-1">
+    <div className="relative flex flex-1 overflow-hidden">
       <Sidebar
         activeConversationId={activeConversationId || undefined}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
       />
-      <main className="flex flex-1 flex-col">
+      <main className="flex flex-1 flex-col min-w-0">
         {activeConversationId ? (
           <ChatArea key={key} conversationId={activeConversationId} />
         ) : (
-          <div className="flex flex-1 items-center justify-center">
+          <div className="flex flex-1 items-center justify-center px-4">
             <div className="text-center">
-              <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+              <h2 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200">
                 👋 Witaj w Asystencie AI!
               </h2>
-              <p className="mt-2 text-gray-500">
+              <p className="mt-2 text-sm md:text-base text-gray-500">
                 Kliknij &quot;Nowa rozmowa&quot; aby rozpocząć.
               </p>
               <button

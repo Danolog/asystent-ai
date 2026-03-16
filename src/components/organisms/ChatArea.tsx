@@ -129,14 +129,14 @@ export function ChatArea({ conversationId, initialMessages }: ChatAreaProps) {
   return (
     <div className="flex h-full flex-col">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
+      <div className="flex-1 overflow-y-auto px-3 md:px-4 py-4 md:py-6">
         {messages.length === 0 && (
-          <div className="flex h-full items-center justify-center">
+          <div className="flex h-full items-center justify-center px-4">
             <div className="text-center">
-              <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+              <h2 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200">
                 👋 Cześć! W czym mogę Ci pomóc?
               </h2>
-              <p className="mt-2 text-gray-500">
+              <p className="mt-2 text-sm md:text-base text-gray-500">
                 Zadaj pytanie, wrzuć dokument lub poproś o wyszukanie w
                 internecie.
               </p>
@@ -164,7 +164,7 @@ export function ChatArea({ conversationId, initialMessages }: ChatAreaProps) {
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+      <div className="border-t border-gray-200 bg-white p-3 md:p-4 dark:border-gray-700 dark:bg-gray-900">
         <form
           onSubmit={handleSubmit}
           className="mx-auto flex max-w-3xl items-end gap-2"
