@@ -14,7 +14,7 @@ import {
 // ============================================================
 
 export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull().default(false),
@@ -32,8 +32,8 @@ export const users = pgTable("users", {
 export const sessions = pgTable(
   "sessions",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
+    id: text("id").primaryKey(),
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     token: text("token").notNull().unique(),
@@ -56,8 +56,8 @@ export const sessions = pgTable(
 export const accounts = pgTable(
   "accounts",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
+    id: text("id").primaryKey(),
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     accountId: text("account_id").notNull(),
@@ -83,6 +83,19 @@ export const accounts = pgTable(
 );
 
 // ============================================================
+// VERIFICATION (required by better-auth)
+// ============================================================
+
+export const verifications = pgTable("verification", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// ============================================================
 // PASSKEYS (WebAuthn / biometric login)
 // ============================================================
 
@@ -92,7 +105,7 @@ export const passkeys = pgTable(
     id: text("id").primaryKey(),
     name: text("name"),
     publicKey: text("public_key").notNull(),
-    userId: uuid("user_id")
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     credentialID: text("credential_id").notNull().unique(),
@@ -119,7 +132,7 @@ export const conversations = pgTable(
   "conversations",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     title: text("title").notNull().default("Nowa rozmowa"),
@@ -167,7 +180,7 @@ export const documents = pgTable(
   "documents",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
@@ -219,7 +232,7 @@ export const memories = pgTable(
   "memories",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     content: text("content").notNull(),
@@ -247,7 +260,7 @@ export const notifications = pgTable(
   "notifications",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     content: text("content").notNull(),
