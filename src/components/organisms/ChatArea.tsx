@@ -109,6 +109,10 @@ export function ChatArea({ conversationId, initialMessages }: ChatAreaProps) {
             )
           );
         }
+
+        if (!fullText.trim()) {
+          throw new Error("Empty response");
+        }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError("Wystąpił błąd. Spróbuj ponownie.");

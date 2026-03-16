@@ -95,6 +95,9 @@ Gdy tworzysz wydarzenie bez podanej godziny zakończenia, ustaw czas trwania na 
     const result = streamText({
       model: chatModel,
       stopWhen: stepCountIs(5),
+      onError: ({ error }) => {
+        console.error("streamText error:", error);
+      },
       system: `Jesteś osobistym asystentem AI o imieniu Asystent. Odpowiadasz po polsku, chyba że użytkownik pisze w innym języku. Jesteś pomocny, konkretny i przyjazny. Formatujesz odpowiedzi w Markdown gdy to stosowne.
 
 Dzisiaj jest: ${today}. Strefa czasowa: Europe/Warsaw.
