@@ -11,6 +11,12 @@ import {
   listGoogleDocs,
   readGoogleDoc,
 } from "@/modules/google/docs.service";
+import {
+  listGmailMessages,
+  readGmailMessage,
+  createGmailDraft,
+  sendGmailMessage,
+} from "@/modules/google/gmail.service";
 import type { UUID, MemoryCategory } from "@/types";
 
 async function searchWeb(query: string): Promise<string> {
@@ -265,6 +271,130 @@ export function createChatTools(userId: UUID, conversationId: UUID) {
             return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
           }
           return `Nie udało się przeszukać dokumentów: ${msg}`;
+        }
+      },
+    }),
+
+    searchGmail: tool({
+      description:
+        "Przeszukaj emaile w Gmail użytkownika. Używaj gdy użytkownik pyta o maile, wiadomości email, korespondencję.",
+      inputSchema: z.object({
+        query: z
+          .string()
+          .describe(
+            "Zapytanie w składni Gmail (np. 'from:jan@example.com', 'subject:faktura', 'is:unread', lub dowolny tekst)"
+          ),
+        maxResults: z
+          .number()
+          .optional()
+          .describe("Maksymalna liczba wyników (domyślnie 10)"),
+      }),
+      execute: async (input) => {
+        try {
+          const connected = await isGoogleConnected(userId);
+          if (!connected) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+          const messages = await listGmailMessages(userId, {
+            q: input.query,
+            maxResults: input.maxResults,
+          });
+          if (messages.length === 0) {
+            return "Nie znaleziono wiadomości pasujących do zapytania.";
+          }
+          return messages
+            .map((m, i) => {
+              return `${i + 1}. **${m.subject || "(brak tematu)"}**\n   Od: ${m.from}\n   Data: ${m.date}\n   ${m.snippet}\n   _ID: ${m.id}_`;
+            })
+            .join("\n\n");
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Nieznany błąd";
+          if (msg.includes("not connected") || msg.includes("GOOGLE_NOT_CONNECTED")) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+          return `Nie udało się przeszukać maili: ${msg}`;
+        }
+      },
+    }),
+
+    readGmail: tool({
+      description:
+        "Odczytaj pełną treść konkretnego emaila z Gmail po jego ID. Używaj po searchGmail aby zobaczyć pełną treść wiadomości.",
+      inputSchema: z.object({
+        messageId: z.string().describe("ID wiadomości Gmail (uzyskane z searchGmail)"),
+      }),
+      execute: async (input) => {
+        try {
+          const connected = await isGoogleConnected(userId);
+          if (!connected) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+          const message = await readGmailMessage(userId, input.messageId);
+          const bodyTruncated =
+            message.body.length > 3000
+              ? message.body.slice(0, 3000) + "\n...(skrócono)"
+              : message.body;
+          return `**${message.subject || "(brak tematu)"}**\nOd: ${message.from}\nDo: ${message.to}\nData: ${message.date}\n\n${bodyTruncated}`;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Nieznany błąd";
+          if (msg.includes("not connected") || msg.includes("GOOGLE_NOT_CONNECTED")) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+          return `Nie udało się odczytać wiadomości: ${msg}`;
+        }
+      },
+    }),
+
+    createGmailDraft: tool({
+      description:
+        "Utwórz szkic emaila w Gmail. Używaj gdy użytkownik prosi o przygotowanie/napisanie maila bez wysyłania.",
+      inputSchema: z.object({
+        to: z.string().describe("Adres email odbiorcy"),
+        subject: z.string().describe("Temat wiadomości"),
+        body: z.string().describe("Treść wiadomości"),
+        cc: z.string().optional().describe("Adresy CC (opcjonalne)"),
+      }),
+      execute: async (input) => {
+        try {
+          const connected = await isGoogleConnected(userId);
+          if (!connected) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+          const draft = await createGmailDraft(userId, input);
+          return `Utworzyłem szkic wiadomości do ${input.to} z tematem "${input.subject}".\nID szkicu: ${draft.id}\nMożesz go znaleźć w folderze Szkice w Gmail.`;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Nieznany błąd";
+          if (msg.includes("not connected") || msg.includes("GOOGLE_NOT_CONNECTED")) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+          return `Nie udało się utworzyć szkicu: ${msg}`;
+        }
+      },
+    }),
+
+    sendGmail: tool({
+      description:
+        "Wyślij email z Gmail użytkownika. WAŻNE: Zawsze potwierdź treść, temat i odbiorcę z użytkownikiem PRZED wysłaniem. Używaj tylko gdy użytkownik wyraźnie potwierdzi że chce wysłać.",
+      inputSchema: z.object({
+        to: z.string().describe("Adres email odbiorcy"),
+        subject: z.string().describe("Temat wiadomości"),
+        body: z.string().describe("Treść wiadomości"),
+        cc: z.string().optional().describe("Adresy CC (opcjonalne)"),
+      }),
+      execute: async (input) => {
+        try {
+          const connected = await isGoogleConnected(userId);
+          if (!connected) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+          const result = await sendGmailMessage(userId, input);
+          return `Wiadomość wysłana pomyślnie do ${input.to}.\nTemat: "${input.subject}"\nID: ${result.id}`;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Nieznany błąd";
+          if (msg.includes("not connected") || msg.includes("GOOGLE_NOT_CONNECTED")) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+          return `Nie udało się wysłać wiadomości: ${msg}`;
         }
       },
     }),
