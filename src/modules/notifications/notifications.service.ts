@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
-import { notifications, notificationLogs, users } from "@/lib/db/schema";
+import { notifications, notificationLogs } from "@/lib/db/schema";
 import { eq, and, lte } from "drizzle-orm";
+import { sendPushToUser } from "./push.service";
 import type {
   UUID,
   NotificationRecurrence,
@@ -101,14 +102,9 @@ export async function processDueNotifications(): Promise<{
 }> {
   const now = new Date();
 
-  // Find all active notifications where nextSendAt <= now
   const dueNotifications = await db
-    .select({
-      notification: notifications,
-      phone: users.phone,
-    })
+    .select()
     .from(notifications)
-    .innerJoin(users, eq(notifications.userId, users.id))
     .where(
       and(
         eq(notifications.isActive, true),
@@ -119,20 +115,17 @@ export async function processDueNotifications(): Promise<{
   let sent = 0;
   let failed = 0;
 
-  for (const { notification, phone } of dueNotifications) {
-    if (!phone) {
-      await logNotificationAttempt(notification.id, "failed", "Brak numeru WhatsApp");
-      failed++;
-      continue;
-    }
-
-    const success = await sendWhatsAppMessage(phone, notification.content);
+  for (const notification of dueNotifications) {
+    const success = await sendPushToUser(notification.userId, {
+      title: "Przypomnienie",
+      body: notification.content,
+      url: "/notifications",
+    });
 
     if (success) {
       await logNotificationAttempt(notification.id, "sent");
       sent++;
 
-      // Calculate next send time for recurring notifications
       const nextSend = calculateNextSend(
         notification.nextSendAt!,
         notification.recurrence as NotificationRecurrence
@@ -144,38 +137,22 @@ export async function processDueNotifications(): Promise<{
           .set({ nextSendAt: nextSend, updatedAt: new Date() })
           .where(eq(notifications.id, notification.id));
       } else {
-        // One-time notification — deactivate
         await db
           .update(notifications)
           .set({ isActive: false, updatedAt: new Date() })
           .where(eq(notifications.id, notification.id));
       }
     } else {
-      await logNotificationAttempt(notification.id, "failed", "Wysyłka nie powiodła się");
+      await logNotificationAttempt(
+        notification.id,
+        "failed",
+        "Brak subskrypcji push lub wysyłka nie powiodła się"
+      );
       failed++;
     }
   }
 
   return { sent, failed };
-}
-
-async function sendWhatsAppMessage(
-  phone: string,
-  message: string
-): Promise<boolean> {
-  const apiKey = process.env.CALLMEBOT_APIKEY;
-  if (!apiKey) return false;
-
-  try {
-    const encodedMessage = encodeURIComponent(message);
-    const encodedPhone = encodeURIComponent(phone);
-    const url = `https://api.callmebot.com/whatsapp.php?phone=${encodedPhone}&text=${encodedMessage}&apikey=${apiKey}`;
-
-    const response = await fetch(url);
-    return response.ok;
-  } catch {
-    return false;
-  }
 }
 
 async function logNotificationAttempt(

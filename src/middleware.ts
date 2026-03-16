@@ -10,10 +10,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow static files and API health
+  // Allow static files, SW, manifest, and API health
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
+    pathname === "/sw.js" ||
+    pathname === "/manifest.webmanifest" ||
     pathname === "/api/health" ||
     pathname.startsWith("/api/cron")
   ) {

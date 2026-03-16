@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   title: "Asystent AI — Twój osobisty asystent",
   description:
     "Osobisty asystent AI z pamięcią, bazą wiedzy i powiadomieniami.",
+  other: {
+    "apple-mobile-web-app-capable": "yes",
+  },
 };
 
 export default function RootLayout({

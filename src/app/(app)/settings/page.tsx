@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Save, Trash2, Brain, Fingerprint, Plus, Shield, Link, Unlink, Calendar, FileText, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Save, Trash2, Brain, Fingerprint, Plus, Shield, Link, Unlink, Calendar, FileText, Mail, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import type { MemoryListItem } from "@/types";
 
@@ -29,7 +29,6 @@ function SettingsContent() {
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [memories, setMemories] = useState<MemoryListItem[]>([]);
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
   const [saved, setSaved] = useState(false);
   const [passkeys, setPasskeys] = useState<PasskeyItem[]>([]);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
@@ -102,7 +101,7 @@ function SettingsContent() {
       await fetch("/api/user/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone }),
+        body: JSON.stringify({ name }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -213,17 +212,6 @@ function SettingsContent() {
               placeholder="Twoje imię"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Numer WhatsApp</label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+48 123 456 789"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-            />
-            <p className="mt-1 text-xs text-gray-500">Numer na który będą wysyłane powiadomienia.</p>
           </div>
           <button
             type="submit"
@@ -362,7 +350,7 @@ function SettingsContent() {
                   Google
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Kalendarz, Dokumenty Google
+                  Kalendarz, Dokumenty Google, Gmail
                 </p>
               </div>
               <div className="flex items-center">
@@ -390,6 +378,10 @@ function SettingsContent() {
               <div className="flex items-center gap-2">
                 <FileText className="h-3.5 w-3.5" />
                 <span>Odczyt dokumentów z Google Docs</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Mail className="h-3.5 w-3.5" />
+                <span>Czytanie, wyszukiwanie i wysyłanie emaili z Gmail</span>
               </div>
             </div>
 

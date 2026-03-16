@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, Plus, Trash2, Pause, Play, AlertCircle } from "lucide-react";
+import { Bell, Plus, Trash2, Pause, Play, AlertCircle, BellRing, BellOff } from "lucide-react";
+import { usePushSubscription } from "@/hooks/usePushSubscription";
 import type { NotificationListItem, NotificationRecurrence } from "@/types";
 
 export default function NotificationsPage() {
@@ -11,6 +12,7 @@ export default function NotificationsPage() {
   const [scheduledAt, setScheduledAt] = useState("");
   const [recurrence, setRecurrence] = useState<NotificationRecurrence>("once");
   const [error, setError] = useState<string | null>(null);
+  const { permission, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushSubscription();
 
   const fetchNotifications = async () => {
     try {
@@ -70,7 +72,7 @@ export default function NotificationsPage() {
     <div className="mx-auto w-full max-w-4xl p-4 md:p-6 overflow-y-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h1 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200">
-          🔔 Powiadomienia
+          Powiadomienia
         </h1>
         <button
           onClick={() => setShowForm(!showForm)}
@@ -80,6 +82,51 @@ export default function NotificationsPage() {
           Nowe powiadomienie
         </button>
       </div>
+
+      {/* Push permission banner */}
+      {permission === "prompt" && (
+        <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 rounded-lg border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-800 dark:bg-indigo-900/20">
+          <BellRing className="h-5 w-5 text-indigo-500 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-indigo-800 dark:text-indigo-200">
+              Włącz powiadomienia push
+            </p>
+            <p className="text-xs text-indigo-600 dark:text-indigo-400">
+              Aby otrzymywać przypomnienia, zezwól na powiadomienia w przeglądarce.
+            </p>
+          </div>
+          <button
+            onClick={subscribe}
+            disabled={pushLoading}
+            className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50"
+          >
+            {pushLoading ? "Ładowanie..." : "Włącz"}
+          </button>
+        </div>
+      )}
+
+      {permission === "denied" && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+          <BellOff className="h-4 w-4 flex-shrink-0" />
+          Powiadomienia push są zablokowane. Odblokuj je w ustawieniach przeglądarki, aby otrzymywać przypomnienia.
+        </div>
+      )}
+
+      {permission === "granted" && isSubscribed && (
+        <div className="mb-4 flex items-center justify-between rounded-lg bg-green-50 p-3 dark:bg-green-900/20">
+          <span className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+            <BellRing className="h-4 w-4" />
+            Powiadomienia push włączone
+          </span>
+          <button
+            onClick={unsubscribe}
+            disabled={pushLoading}
+            className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 disabled:opacity-50"
+          >
+            Wyłącz
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-600">
@@ -145,7 +192,7 @@ export default function NotificationsPage() {
             Nie masz jeszcze żadnych powiadomień
           </h3>
           <p className="mt-2 text-gray-500">
-            Ustaw przypomnienie, a wyślemy je na Twój WhatsApp.
+            Ustaw przypomnienie, a wyślemy je jako powiadomienie push.
           </p>
         </div>
       ) : (
@@ -161,7 +208,7 @@ export default function NotificationsPage() {
                 <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{n.content}</p>
                 <p className="text-xs text-gray-500">
                   {new Date(n.scheduledAt).toLocaleString("pl")} · {recurrenceLabels[n.recurrence]}
-                  {n.isActive ? " · 🟢 Aktywne" : " · ⏸ Wstrzymane"}
+                  {n.isActive ? " · Aktywne" : " · Wstrzymane"}
                 </p>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { errorResponse, AppError } from "@/lib/utils/errors";
+import { errorResponse } from "@/lib/utils/errors";
 import { getUserId } from "@/modules/auth/auth.middleware";
 
 export async function GET() {
@@ -15,7 +15,6 @@ export async function GET() {
       id: user.id,
       name: user.name,
       email: user.email,
-      phone: user.phone,
       role: user.role,
     });
   } catch (error) {
@@ -30,12 +29,6 @@ export async function PUT(request: Request) {
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (body.name !== undefined) updateData.name = body.name;
-    if (body.phone !== undefined) {
-      if (body.phone && !/^\+\d{1,15}$/.test(body.phone)) {
-        throw new AppError("VALIDATION_ERROR", "Numer telefonu musi być w formacie E.164 (np. +48123456789)");
-      }
-      updateData.phone = body.phone;
-    }
 
     await db.update(users).set(updateData).where(eq(users.id, userId));
 
