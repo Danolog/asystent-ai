@@ -2,6 +2,7 @@ import { z } from "zod";
 import { tool } from "ai";
 import { addMemory, getRelevantMemories } from "@/modules/memory/memory.service";
 import { searchDocumentChunks } from "@/modules/rag/rag.service";
+import { createNotification } from "@/modules/notifications/notifications.service";
 import { isGoogleConnected } from "@/modules/google/google.service";
 import {
   createCalendarEvent,
@@ -396,6 +397,58 @@ export function createChatTools(userId: UUID, conversationId: UUID) {
             return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
           }
           return `Nie udało się wysłać wiadomości: ${msg}`;
+        }
+      },
+    }),
+
+    createReminder: tool({
+      description:
+        "Utwórz przypomnienie/powiadomienie push dla użytkownika. Używaj gdy użytkownik mówi 'przypomnij mi', 'ustaw przypomnienie', 'powiadom mnie o...', lub wspomina o terminie płatności/spotkaniu.",
+      inputSchema: z.object({
+        content: z.string().describe("Treść przypomnienia"),
+        scheduledAt: z
+          .string()
+          .describe("Data i godzina wysyłki w formacie ISO 8601 (np. 2026-03-20T09:00:00)"),
+        recurrence: z
+          .enum(["once", "daily", "weekly", "monthly"])
+          .optional()
+          .describe("Powtarzalność: once (domyślnie), daily, weekly, monthly"),
+      }),
+      execute: async (input) => {
+        try {
+          const date = new Date(input.scheduledAt);
+          if (isNaN(date.getTime())) {
+            return "Nieprawidłowa data. Podaj datę w formacie ISO 8601.";
+          }
+          if (date <= new Date()) {
+            return "Data musi być w przyszłości.";
+          }
+
+          const notification = await createNotification(
+            userId,
+            input.content,
+            date,
+            input.recurrence || "once"
+          );
+
+          const dateStr = date.toLocaleString("pl-PL", {
+            timeZone: "Europe/Warsaw",
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+
+          const recurrenceLabel =
+            input.recurrence === "daily" ? " (codziennie)" :
+            input.recurrence === "weekly" ? " (co tydzień)" :
+            input.recurrence === "monthly" ? " (co miesiąc)" : "";
+
+          return `Przypomnienie ustawione: "${input.content}"\nTermin: ${dateStr}${recurrenceLabel}\n\nZnajdziesz je w zakładce Powiadomienia.`;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Nieznany błąd";
+          return `Nie udało się utworzyć przypomnienia: ${msg}`;
         }
       },
     }),

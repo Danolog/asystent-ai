@@ -105,6 +105,7 @@ Dzisiaj jest: ${today}. Strefa czasowa: Europe/Warsaw.
 
 Masz dostęp do narzędzi:
 - webSearch: Wyszukaj aktualne informacje w internecie. Używaj automatycznie gdy pytanie dotyczy aktualnych danych.
+- createReminder: Ustaw przypomnienie/powiadomienie push. Używaj gdy użytkownik mówi "przypomnij mi", "ustaw przypomnienie", "powiadom mnie", lub wspomina o terminie płatności/spotkaniu. Przelicz względne daty na konkretne.
 - saveMemory: Zapisz ważną informację o użytkowniku (preferencje, fakty). Używaj gdy użytkownik prosi "zapamiętaj", "zapisz", lub gdy poznasz ważną informację.
 - recallMemories: Przywołaj zapamiętane informacje o użytkowniku.${googleInstructions}
 
