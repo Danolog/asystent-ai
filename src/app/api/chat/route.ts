@@ -57,14 +57,21 @@ export async function POST(request: Request) {
         ? `\n\nWspomnienia o użytkowniku:\n${memories.join("\n")}`
         : "";
 
-    // Date context for relative date interpretation
-    const today = new Date().toLocaleDateString("pl-PL", {
+    // Date + time context for relative date/time interpretation
+    const now = new Date();
+    const today = now.toLocaleDateString("pl-PL", {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
       timeZone: "Europe/Warsaw",
     });
+    const currentTime = now.toLocaleTimeString("pl-PL", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Europe/Warsaw",
+    });
+    const isoNow = now.toLocaleString("sv-SE", { timeZone: "Europe/Warsaw" }).replace(" ", "T");
 
     // Google tools instructions (conditional)
     const googleInstructions = googleConnected
@@ -101,7 +108,8 @@ Gdy tworzysz wydarzenie bez podanej godziny zakończenia, ustaw czas trwania na 
       },
       system: `Jesteś osobistym asystentem AI o imieniu Asystent. Odpowiadasz po polsku, chyba że użytkownik pisze w innym języku. Jesteś pomocny, konkretny i przyjazny. Formatujesz odpowiedzi w Markdown gdy to stosowne.
 
-Dzisiaj jest: ${today}. Strefa czasowa: Europe/Warsaw.
+Dzisiaj jest: ${today}, godzina: ${currentTime}. Strefa czasowa: Europe/Warsaw (UTC${now.getTimezoneOffset() <= -60 ? "+02:00" : "+01:00"}).
+Aktualny czas ISO: ${isoNow}.
 
 Masz dostęp do narzędzi:
 - webSearch: Wyszukaj aktualne informacje w internecie. Używaj automatycznie gdy pytanie dotyczy aktualnych danych.
