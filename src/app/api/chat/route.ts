@@ -1,4 +1,4 @@
-import { streamText } from "ai";
+import { streamText, stepCountIs } from "ai";
 import { chatModel } from "@/lib/ai/client";
 import {
   saveMessage,
@@ -68,10 +68,14 @@ export async function POST(request: Request) {
 
     // Google tools instructions (conditional)
     const googleInstructions = googleConnected
-      ? `\n\nMasz dostęp do Google Calendar i Google Docs użytkownika:
+      ? `\n\nMasz dostęp do Google Calendar, Google Docs i Gmail użytkownika:
 - createCalendarEvent: Utwórz wydarzenie w kalendarzu. Używaj gdy użytkownik mówi o spotkaniu/terminie z datą.
 - listCalendarEvents: Pokaż nadchodzące wydarzenia. Używaj gdy pyta "co mam w kalendarzu?", "jakie mam spotkania?".
 - searchGoogleDocs: Przeszukaj dokumenty Google Docs. Używaj gdy pyta o treść swoich dokumentów.
+- searchGmail: Przeszukaj emaile. Używaj gdy pyta o maile, wiadomości, korespondencję. Obsługuje składnię Gmail (from:, subject:, is:unread itp.).
+- readGmail: Odczytaj pełną treść emaila po ID. Używaj po searchGmail aby zobaczyć całą wiadomość.
+- createGmailDraft: Utwórz szkic emaila. Używaj gdy użytkownik prosi o napisanie/przygotowanie maila.
+- sendGmail: Wyślij email. ZAWSZE potwierdź treść, temat i odbiorcę z użytkownikiem PRZED wysłaniem.
 
 Gdy użytkownik podaje względne daty ("jutro", "w piątek", "za tydzień"), przelicz je na konkretne daty na podstawie dzisiejszej daty.
 Gdy tworzysz wydarzenie bez podanej godziny zakończenia, ustaw czas trwania na 1 godzinę.`
@@ -90,6 +94,7 @@ Gdy tworzysz wydarzenie bez podanej godziny zakończenia, ustaw czas trwania na 
     // Stream AI response
     const result = streamText({
       model: chatModel,
+      stopWhen: stepCountIs(5),
       system: `Jesteś osobistym asystentem AI o imieniu Asystent. Odpowiadasz po polsku, chyba że użytkownik pisze w innym języku. Jesteś pomocny, konkretny i przyjazny. Formatujesz odpowiedzi w Markdown gdy to stosowne.
 
 Dzisiaj jest: ${today}. Strefa czasowa: Europe/Warsaw.
@@ -106,14 +111,18 @@ Gdy podajesz informacje z web search — zawsze cytuj źródła z linkami.${memo
       tools,
       onFinish: async ({ text, usage }) => {
         if (text) {
-          await saveMessage(
-            conversationId,
-            "assistant",
-            text,
-            "ai",
-            undefined,
-            usage.totalTokens
-          );
+          try {
+            await saveMessage(
+              conversationId,
+              "assistant",
+              text,
+              "ai",
+              undefined,
+              usage.totalTokens
+            );
+          } catch (e) {
+            console.error("Failed to save assistant message:", e);
+          }
         }
       },
     });

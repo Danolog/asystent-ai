@@ -117,5 +117,5 @@ function extractTextFromDoc(doc: Record<string, unknown>): string {
     }
   }
 
-  return parts.join("").trim();
+  return parts.join("\n").trim();
 }
