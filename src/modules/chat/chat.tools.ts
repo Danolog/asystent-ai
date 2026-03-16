@@ -408,7 +408,7 @@ export function createChatTools(userId: UUID, conversationId: UUID) {
         content: z.string().describe("Treść przypomnienia"),
         scheduledAt: z
           .string()
-          .describe("Data i godzina wysyłki w formacie ISO 8601 (np. 2026-03-20T09:00:00)"),
+          .describe("Data i godzina wysyłki w formacie ISO 8601 z timezone Europe/Warsaw. ZAWSZE dodawaj offset +01:00 (zima) lub +02:00 (lato). Np. 2026-03-20T09:00:00+01:00"),
         recurrence: z
           .enum(["once", "daily", "weekly", "monthly"])
           .optional()

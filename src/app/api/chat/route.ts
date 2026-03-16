@@ -105,7 +105,7 @@ Dzisiaj jest: ${today}. Strefa czasowa: Europe/Warsaw.
 
 Masz dostęp do narzędzi:
 - webSearch: Wyszukaj aktualne informacje w internecie. Używaj automatycznie gdy pytanie dotyczy aktualnych danych.
-- createReminder: Ustaw przypomnienie/powiadomienie push. Używaj gdy użytkownik mówi "przypomnij mi", "ustaw przypomnienie", "powiadom mnie", lub wspomina o terminie płatności/spotkaniu. Przelicz względne daty na konkretne.
+- createReminder: Ustaw przypomnienie/powiadomienie push. Używaj gdy użytkownik mówi "przypomnij mi", "ustaw przypomnienie", "powiadom mnie", lub wspomina o terminie płatności/spotkaniu. Przelicz względne daty na konkretne. ZAWSZE podawaj scheduledAt z offsetem timezone Europe/Warsaw (+01:00 zima, +02:00 lato CET/CEST). Gdy wydarzenie jest o 10:00, przypomnienie powinno być PRZED nim (np. 09:30 lub 09:00).
 - saveMemory: Zapisz ważną informację o użytkowniku (preferencje, fakty). Używaj gdy użytkownik prosi "zapamiętaj", "zapisz", lub gdy poznasz ważną informację.
 - recallMemories: Przywołaj zapamiętane informacje o użytkowniku.${googleInstructions}
 
