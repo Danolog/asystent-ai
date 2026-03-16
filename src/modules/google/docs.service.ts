@@ -56,6 +56,23 @@ export async function readGoogleDoc(
   userId: string,
   documentId: string
 ): Promise<{ title: string; text: string }> {
+  // Fast path: export as plain text (much smaller than full JSON structure)
+  try {
+    const [exportResponse, metaResponse] = await Promise.all([
+      googleApiFetch(userId, `${DRIVE_BASE}/files/${documentId}/export?mimeType=text/plain`),
+      googleApiFetch(userId, `${DRIVE_BASE}/files/${documentId}?fields=name`),
+    ]);
+
+    if (exportResponse.ok) {
+      const text = await exportResponse.text();
+      const meta = metaResponse.ok ? await metaResponse.json() : { name: "Dokument" };
+      return { title: meta.name || "Dokument", text: text.trim() };
+    }
+  } catch {
+    // Fall through to Docs API
+  }
+
+  // Fallback: full Docs API (slower, bigger response)
   const response = await googleApiFetch(
     userId,
     `${DOCS_BASE}/documents/${documentId}`

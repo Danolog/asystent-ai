@@ -103,14 +103,21 @@ export async function googleApiFetch(
 ): Promise<Response> {
   const accessToken = await getGoogleAccessToken(userId);
 
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000); // 15s timeout
 
-  return response;
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+    return response;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
