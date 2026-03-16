@@ -2,6 +2,15 @@ import { z } from "zod";
 import { tool } from "ai";
 import { addMemory, getRelevantMemories } from "@/modules/memory/memory.service";
 import { searchDocumentChunks } from "@/modules/rag/rag.service";
+import { isGoogleConnected } from "@/modules/google/google.service";
+import {
+  createCalendarEvent,
+  listCalendarEvents,
+} from "@/modules/google/calendar.service";
+import {
+  listGoogleDocs,
+  readGoogleDoc,
+} from "@/modules/google/docs.service";
 import type { UUID, MemoryCategory } from "@/types";
 
 async function searchWeb(query: string): Promise<string> {
@@ -102,6 +111,161 @@ export function createChatTools(userId: UUID, conversationId: UUID) {
         if (mems.length === 0)
           return "Nie mam jeszcze żadnych wspomnień o Tobie.";
         return `Oto co pamiętam:\n${mems.join("\n")}`;
+      },
+    }),
+
+    createCalendarEvent: tool({
+      description:
+        "Utwórz wydarzenie w Google Calendar użytkownika. Używaj gdy użytkownik mówi o spotkaniu, terminie, wydarzeniu z konkretną datą/godziną.",
+      inputSchema: z.object({
+        summary: z.string().describe("Tytuł wydarzenia"),
+        description: z.string().optional().describe("Opis wydarzenia"),
+        startDateTime: z
+          .string()
+          .describe("Data i godzina rozpoczęcia w formacie ISO 8601 (np. 2026-03-20T14:00:00)"),
+        endDateTime: z
+          .string()
+          .describe("Data i godzina zakończenia w formacie ISO 8601 (np. 2026-03-20T15:00:00)"),
+        location: z.string().optional().describe("Miejsce wydarzenia"),
+      }),
+      execute: async (input) => {
+        try {
+          const connected = await isGoogleConnected(userId);
+          if (!connected) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+          const event = await createCalendarEvent(userId, input);
+          return `Utworzyłem wydarzenie "${event.summary}" w kalendarzu.\nLink: ${event.htmlLink}`;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Nieznany błąd";
+          if (msg.includes("not connected") || msg.includes("GOOGLE_NOT_CONNECTED")) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+          return `Nie udało się utworzyć wydarzenia: ${msg}`;
+        }
+      },
+    }),
+
+    listCalendarEvents: tool({
+      description:
+        "Pokaż nadchodzące wydarzenia z Google Calendar. Używaj gdy użytkownik pyta co ma w kalendarzu, jakie ma spotkania, co jest zaplanowane.",
+      inputSchema: z.object({
+        timeMin: z
+          .string()
+          .optional()
+          .describe("Od kiedy szukać (ISO 8601). Domyślnie: teraz."),
+        timeMax: z
+          .string()
+          .optional()
+          .describe("Do kiedy szukać (ISO 8601). Domyślnie: 7 dni do przodu."),
+        maxResults: z
+          .number()
+          .optional()
+          .describe("Maksymalna liczba wyników (domyślnie 10)"),
+        q: z
+          .string()
+          .optional()
+          .describe("Szukaj wydarzeń zawierających ten tekst"),
+      }),
+      execute: async (input) => {
+        try {
+          const connected = await isGoogleConnected(userId);
+          if (!connected) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+
+          const now = new Date();
+          const weekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+          const events = await listCalendarEvents(userId, {
+            timeMin: input.timeMin || now.toISOString(),
+            timeMax: input.timeMax || weekLater.toISOString(),
+            maxResults: input.maxResults,
+            q: input.q,
+          });
+
+          if (events.length === 0) {
+            return "Brak wydarzeń w tym okresie.";
+          }
+
+          return events
+            .map((e, i) => {
+              const start = e.start.dateTime || e.start.date || "?";
+              const end = e.end.dateTime || e.end.date || "";
+              const loc = e.location ? ` | ${e.location}` : "";
+              return `${i + 1}. **${e.summary}**\n   ${start} → ${end}${loc}`;
+            })
+            .join("\n\n");
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Nieznany błąd";
+          if (msg.includes("not connected") || msg.includes("GOOGLE_NOT_CONNECTED")) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+          return `Nie udało się pobrać kalendarza: ${msg}`;
+        }
+      },
+    }),
+
+    searchGoogleDocs: tool({
+      description:
+        "Przeszukaj i czytaj dokumenty Google Docs użytkownika. Używaj gdy użytkownik pyta o treść swoich dokumentów Google.",
+      inputSchema: z.object({
+        query: z.string().describe("Szukaj dokumentów zawierających ten tekst"),
+        readDocumentId: z
+          .string()
+          .optional()
+          .describe("ID dokumentu do odczytania pełnej treści (jeśli znane)"),
+      }),
+      execute: async (input) => {
+        try {
+          const connected = await isGoogleConnected(userId);
+          if (!connected) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+
+          // Read specific document
+          if (input.readDocumentId) {
+            const doc = await readGoogleDoc(userId, input.readDocumentId);
+            const truncated =
+              doc.text.length > 3000
+                ? doc.text.slice(0, 3000) + "\n...(skrócono)"
+                : doc.text;
+            return `**${doc.title}**\n\n${truncated}`;
+          }
+
+          // Search documents
+          const docs = await listGoogleDocs(userId, {
+            query: input.query,
+            maxResults: 5,
+          });
+
+          if (docs.length === 0) {
+            return "Nie znalazłem dokumentów pasujących do zapytania.";
+          }
+
+          // Read the first matching document
+          const firstDoc = await readGoogleDoc(userId, docs[0].id);
+          const truncated =
+            firstDoc.text.length > 2000
+              ? firstDoc.text.slice(0, 2000) + "\n...(skrócono)"
+              : firstDoc.text;
+
+          const otherDocs =
+            docs.length > 1
+              ? `\n\nInne pasujące dokumenty:\n${docs
+                  .slice(1)
+                  .map((d, i) => `${i + 2}. ${d.name} (${d.webViewLink})`)
+                  .join("\n")}`
+              : "";
+
+          return `**${firstDoc.title}**\n\n${truncated}${otherDocs}`;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Nieznany błąd";
+          if (msg.includes("not connected") || msg.includes("GOOGLE_NOT_CONNECTED")) {
+            return "Nie masz połączonego konta Google. Przejdź do Ustawienia → Integracje, aby połączyć konto Google.";
+          }
+          return `Nie udało się przeszukać dokumentów: ${msg}`;
+        }
       },
     }),
   };

@@ -9,6 +9,7 @@ import {
 import { generateTitle } from "@/modules/chat/chat.utils";
 import { createChatTools } from "@/modules/chat/chat.tools";
 import { getRelevantMemories } from "@/modules/memory/memory.service";
+import { isGoogleConnected } from "@/modules/google/google.service";
 import { errorResponse, AppError } from "@/lib/utils/errors";
 import { getUserId } from "@/modules/auth/auth.middleware";
 import { checkRateLimit } from "@/lib/utils/rate-limit";
@@ -46,12 +47,35 @@ export async function POST(request: Request) {
       await updateConversationTitle(conversationId, title);
     }
 
-    // Get long-term memories for context
-    const memories = await getRelevantMemories(userId);
+    // Get long-term memories and Google status in parallel
+    const [memories, googleConnected] = await Promise.all([
+      getRelevantMemories(userId),
+      isGoogleConnected(userId).catch(() => false),
+    ]);
     const memoryContext =
       memories.length > 0
         ? `\n\nWspomnienia o użytkowniku:\n${memories.join("\n")}`
         : "";
+
+    // Date context for relative date interpretation
+    const today = new Date().toLocaleDateString("pl-PL", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      timeZone: "Europe/Warsaw",
+    });
+
+    // Google tools instructions (conditional)
+    const googleInstructions = googleConnected
+      ? `\n\nMasz dostęp do Google Calendar i Google Docs użytkownika:
+- createCalendarEvent: Utwórz wydarzenie w kalendarzu. Używaj gdy użytkownik mówi o spotkaniu/terminie z datą.
+- listCalendarEvents: Pokaż nadchodzące wydarzenia. Używaj gdy pyta "co mam w kalendarzu?", "jakie mam spotkania?".
+- searchGoogleDocs: Przeszukaj dokumenty Google Docs. Używaj gdy pyta o treść swoich dokumentów.
+
+Gdy użytkownik podaje względne daty ("jutro", "w piątek", "za tydzień"), przelicz je na konkretne daty na podstawie dzisiejszej daty.
+Gdy tworzysz wydarzenie bez podanej godziny zakończenia, ustaw czas trwania na 1 godzinę.`
+      : "";
 
     // Build message history for AI
     const aiMessages = data.messages.map((m) => ({
@@ -68,10 +92,12 @@ export async function POST(request: Request) {
       model: chatModel,
       system: `Jesteś osobistym asystentem AI o imieniu Asystent. Odpowiadasz po polsku, chyba że użytkownik pisze w innym języku. Jesteś pomocny, konkretny i przyjazny. Formatujesz odpowiedzi w Markdown gdy to stosowne.
 
+Dzisiaj jest: ${today}. Strefa czasowa: Europe/Warsaw.
+
 Masz dostęp do narzędzi:
 - webSearch: Wyszukaj aktualne informacje w internecie. Używaj automatycznie gdy pytanie dotyczy aktualnych danych.
 - saveMemory: Zapisz ważną informację o użytkowniku (preferencje, fakty). Używaj gdy użytkownik prosi "zapamiętaj", "zapisz", lub gdy poznasz ważną informację.
-- recallMemories: Przywołaj zapamiętane informacje o użytkowniku.
+- recallMemories: Przywołaj zapamiętane informacje o użytkowniku.${googleInstructions}
 
 Gdy użytkownik pyta "co o mnie wiesz?" — użyj recallMemories.
 Gdy użytkownik mówi "zapomnij o X" — poinformuj że może usunąć wspomnienie w ustawieniach.
