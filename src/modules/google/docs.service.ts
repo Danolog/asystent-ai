@@ -3,6 +3,23 @@ import { googleApiFetch } from "./google.service";
 const DRIVE_BASE = "https://www.googleapis.com/drive/v3";
 const DOCS_BASE = "https://docs.googleapis.com/v1";
 
+// In-memory cache — lives as long as the serverless instance (~5–15 min on Vercel)
+const cache = new Map<string, { data: unknown; expiry: number }>();
+
+function getCached<T>(key: string): T | null {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiry) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+function setCache(key: string, data: unknown, ttlMs: number): void {
+  cache.set(key, { data, expiry: Date.now() + ttlMs });
+}
+
 interface DriveFile {
   id: string;
   name: string;
@@ -21,6 +38,10 @@ export async function listGoogleDocs(
   userId: string,
   options: { query?: string; maxResults?: number } = {}
 ): Promise<DocSearchResult[]> {
+  const cacheKey = `search:${userId}:${options.query ?? ""}:${options.maxResults ?? 10}`;
+  const cached = getCached<DocSearchResult[]>(cacheKey);
+  if (cached) return cached;
+
   let q = "mimeType='application/vnd.google-apps.document' and trashed=false";
   if (options.query) {
     q += ` and fullText contains '${options.query.replace(/'/g, "\\'")}'`;
@@ -44,18 +65,25 @@ export async function listGoogleDocs(
   }
 
   const data = await response.json();
-  return ((data.files || []) as DriveFile[]).map((f) => ({
+  const results = ((data.files || []) as DriveFile[]).map((f) => ({
     id: f.id,
     name: f.name,
     modifiedTime: f.modifiedTime,
     webViewLink: f.webViewLink,
   }));
+
+  setCache(cacheKey, results, 5 * 60 * 1000); // 5 min TTL
+  return results;
 }
 
 export async function readGoogleDoc(
   userId: string,
   documentId: string
 ): Promise<{ title: string; text: string }> {
+  const cacheKey = `read:${userId}:${documentId}`;
+  const cached = getCached<{ title: string; text: string }>(cacheKey);
+  if (cached) return cached;
+
   // Fast path: export as plain text (much smaller than full JSON structure)
   try {
     const [exportResponse, metaResponse] = await Promise.all([
@@ -66,7 +94,9 @@ export async function readGoogleDoc(
     if (exportResponse.ok) {
       const text = await exportResponse.text();
       const meta = metaResponse.ok ? await metaResponse.json() : { name: "Dokument" };
-      return { title: meta.name || "Dokument", text: text.trim() };
+      const result = { title: meta.name || "Dokument", text: text.trim() };
+      setCache(cacheKey, result, 10 * 60 * 1000); // 10 min TTL
+      return result;
     }
   } catch {
     // Fall through to Docs API
@@ -86,8 +116,10 @@ export async function readGoogleDoc(
   const doc = await response.json();
   const title: string = doc.title || "Bez tytułu";
   const text = extractTextFromDoc(doc);
+  const result = { title, text };
 
-  return { title, text };
+  setCache(cacheKey, result, 10 * 60 * 1000); // 10 min TTL
+  return result;
 }
 
 // Extract plain text from Google Docs JSON structure
