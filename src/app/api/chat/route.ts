@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     const [memories, googleConnected, userRow] = await Promise.all([
       getRelevantMemories(userId),
       isGoogleConnected(userId).catch(() => false),
-      db.select({ preferredModel: users.preferredModel }).from(users).where(eq(users.id, userId)).then((rows) => rows[0]),
+      db.select({ preferredModel: users.preferredModel, name: users.name }).from(users).where(eq(users.id, userId)).then((rows) => rows[0]),
     ]);
     const memoryContext =
       memories.length > 0
@@ -110,7 +110,7 @@ Gdy tworzysz wydarzenie bez podanej godziny zakończenia, ustaw czas trwania na 
       onError: ({ error }) => {
         console.error("streamText error:", error);
       },
-      system: `Jesteś osobistym asystentem AI o imieniu Asystent. Odpowiadasz po polsku, chyba że użytkownik pisze w innym języku. Jesteś pomocny, konkretny i przyjazny. Formatujesz odpowiedzi w Markdown gdy to stosowne.
+      system: `Masz na imię Luna — jesteś osobistą asystentką AI. Odpowiadasz po polsku, chyba że użytkownik pisze w innym języku. Jesteś pomocna, konkretna i przyjazna. Formatujesz odpowiedzi w Markdown gdy to stosowne.${userRow?.name ? `\nUżytkownik ma na imię ${userRow.name}. Zwracaj się do niego po imieniu gdy to naturalne (np. powitania, bezpośrednie odpowiedzi), ale nie przesadzaj — nie w każdym zdaniu.` : ""}
 
 Dzisiaj jest: ${today}, godzina: ${currentTime}. Strefa czasowa: Europe/Warsaw (UTC${now.getTimezoneOffset() <= -60 ? "+02:00" : "+01:00"}).
 Aktualny czas ISO: ${isoNow}.

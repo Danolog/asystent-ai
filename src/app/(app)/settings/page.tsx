@@ -45,6 +45,21 @@ function SettingsContent() {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    async function loadProfile() {
+      try {
+        const res = await fetch("/api/user/profile");
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          if (data.name) setName(data.name);
+        }
+      } catch { /* silently fail */ }
+    }
+    loadProfile();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
     if (activeTab !== "memory") return;
     let cancelled = false;
     async function load() {
