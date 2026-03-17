@@ -60,6 +60,7 @@ export async function sendPushToUser(
     .from(pushSubscriptions)
     .where(eq(pushSubscriptions.userId, userId));
 
+  console.log(`[push] User ${userId}: found ${subs.length} push subscriptions`);
   if (subs.length === 0) return false;
 
   const jsonPayload = JSON.stringify(payload);
@@ -74,8 +75,10 @@ export async function sendPushToUser(
         },
         jsonPayload
       );
+      console.log(`[push] Sent to ${sub.endpoint.slice(0, 60)}...`);
       anySent = true;
     } catch (err: unknown) {
+      console.error(`[push] Failed:`, err instanceof Error ? err.message : err);
       const statusCode =
         err instanceof webpush.WebPushError ? err.statusCode : 0;
       // 404 or 410 = subscription expired/invalid — remove it

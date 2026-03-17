@@ -112,10 +112,13 @@ export async function processDueNotifications(): Promise<{
       )
     );
 
+  console.log(`[cron] Found ${dueNotifications.length} due notifications at ${now.toISOString()}`);
+
   let sent = 0;
   let failed = 0;
 
   for (const notification of dueNotifications) {
+    console.log(`[cron] Processing: "${notification.content}" for user ${notification.userId}, nextSendAt: ${notification.nextSendAt?.toISOString()}`);
     const success = await sendPushToUser(notification.userId, {
       title: "Przypomnienie",
       body: notification.content,

@@ -12,6 +12,7 @@ export async function GET(request: Request) {
 
   try {
     const result = await processDueNotifications();
+    console.log("Cron result:", JSON.stringify(result));
     return NextResponse.json(result);
   } catch (error) {
     console.error("Cron notification error:", error);
