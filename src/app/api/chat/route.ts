@@ -1,5 +1,5 @@
 import { streamText, stepCountIs } from "ai";
-import { getModel } from "@/lib/ai/client";
+import { getModel, availableModels } from "@/lib/ai/client";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -100,6 +100,10 @@ Gdy tworzysz wydarzenie bez podanej godziny zakończenia, ustaw czas trwania na 
     }));
     aiMessages.push({ role: "user", content });
 
+    // Resolve model name for system prompt
+    const activeModelId = userRow?.preferredModel || "claude-haiku-4-5-20251001";
+    const activeModelLabel = availableModels.find((m) => m.id === activeModelId)?.label ?? activeModelId;
+
     // Create tools
     const tools = createChatTools(userId, conversationId);
 
@@ -110,7 +114,7 @@ Gdy tworzysz wydarzenie bez podanej godziny zakończenia, ustaw czas trwania na 
       onError: ({ error }) => {
         console.error("streamText error:", error);
       },
-      system: `Masz na imię Luna — jesteś osobistą asystentką AI. Odpowiadasz po polsku, chyba że użytkownik pisze w innym języku. Jesteś pomocna, konkretna i przyjazna. Formatujesz odpowiedzi w Markdown gdy to stosowne.${userRow?.name ? `\nUżytkownik ma na imię ${userRow.name}. Zwracaj się do niego po imieniu gdy to naturalne (np. powitania, bezpośrednie odpowiedzi), ale nie przesadzaj — nie w każdym zdaniu.` : ""}
+      system: `Masz na imię Luna — jesteś osobistą asystentką AI. Działasz na modelu ${activeModelLabel} od Anthropic. Odpowiadasz po polsku, chyba że użytkownik pisze w innym języku. Jesteś pomocna, konkretna i przyjazna. Formatujesz odpowiedzi w Markdown gdy to stosowne. Gdy ktoś pyta jaki jesteś model, odpowiadasz że jesteś Luna oparta na ${activeModelLabel}.${userRow?.name ? `\nUżytkownik ma na imię ${userRow.name}. Zwracaj się do niego po imieniu gdy to naturalne (np. powitania, bezpośrednie odpowiedzi), ale nie przesadzaj — nie w każdym zdaniu.` : ""}
 
 Dzisiaj jest: ${today}, godzina: ${currentTime}. Strefa czasowa: Europe/Warsaw (UTC${now.getTimezoneOffset() <= -60 ? "+02:00" : "+01:00"}).
 Aktualny czas ISO: ${isoNow}.
