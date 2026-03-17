@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Save, Trash2, Brain, Fingerprint, Plus, Shield, Link, Unlink, Calendar, FileText, Mail, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Save, Trash2, Brain, Fingerprint, Plus, Shield, Link, Unlink, Calendar, FileText, Mail, Loader2, CheckCircle2, XCircle, Sparkles } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import type { MemoryListItem } from "@/types";
 
@@ -34,6 +34,11 @@ function SettingsContent() {
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyError, setPasskeyError] = useState<string | null>(null);
   const [passkeySuccess, setPasskeySuccess] = useState<string | null>(null);
+
+  // Preferences state
+  const [preferredModel, setPreferredModel] = useState<string>("");
+  const [modelSaving, setModelSaving] = useState(false);
+  const [modelSaved, setModelSaved] = useState(false);
 
   // Google integration state
   const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
@@ -70,6 +75,22 @@ function SettingsContent() {
       } catch { /* silently fail */ }
     }
     loadPasskeys();
+    return () => { cancelled = true; };
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "preferences") return;
+    let cancelled = false;
+    async function loadPreferences() {
+      try {
+        const res = await fetch("/api/user/profile");
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          if (data.preferredModel) setPreferredModel(data.preferredModel);
+        }
+      } catch { /* silently fail */ }
+    }
+    loadPreferences();
     return () => { cancelled = true; };
   }, [activeTab]);
 
@@ -148,6 +169,22 @@ function SettingsContent() {
     } catch {
       setPasskeyError("Nie udało się usunąć passkey");
     }
+  };
+
+  const handleModelChange = async (modelId: string) => {
+    setPreferredModel(modelId);
+    setModelSaving(true);
+    setModelSaved(false);
+    try {
+      await fetch("/api/user/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferredModel: modelId }),
+      });
+      setModelSaved(true);
+      setTimeout(() => setModelSaved(false), 3000);
+    } catch { /* silently fail */ }
+    setModelSaving(false);
   };
 
   const handleConnectGoogle = async () => {
@@ -417,12 +454,45 @@ function SettingsContent() {
       )}
 
       {activeTab === "preferences" && (
-        <div className="max-w-md space-y-4">
-          <p className="text-sm text-gray-500">Preferencje będą dostępne w przyszłych aktualizacjach.</p>
-          <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Planowane: język interfejsu, ciemny motyw, domyślny tryb TTS.
+        <div className="max-w-md space-y-6">
+          <div>
+            <h2 className="text-base font-medium text-gray-800 dark:text-gray-200 flex items-center gap-2 mb-1">
+              <Sparkles className="h-5 w-5" />
+              Model AI
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Wybierz model używany w czacie.
             </p>
+            <div className="space-y-2">
+              {[
+                { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5", desc: "Szybki i ekonomiczny" },
+                { id: "claude-sonnet-4-20250514", label: "Claude Sonnet 4", desc: "Zaawansowany, lepsze rozumowanie" },
+              ].map((model) => (
+                <label
+                  key={model.id}
+                  className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                    preferredModel === model.id
+                      ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
+                      : "border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="model"
+                    value={model.id}
+                    checked={preferredModel === model.id}
+                    onChange={() => handleModelChange(model.id)}
+                    className="accent-indigo-500"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{model.label}</p>
+                    <p className="text-xs text-gray-500">{model.desc}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            {modelSaving && <p className="text-sm text-gray-400 mt-2">Zapisywanie...</p>}
+            {modelSaved && <p className="text-sm text-green-600 mt-2">Zapisano!</p>}
           </div>
         </div>
       )}

@@ -21,6 +21,7 @@ export const users = pgTable("users", {
   image: text("image"),
   phone: text("phone"),
   role: text("role").notNull().default("user"),
+  preferredModel: text("preferred_model").default("claude-haiku-4-5-20251001"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -4,6 +4,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { errorResponse } from "@/lib/utils/errors";
 import { getUserId } from "@/modules/auth/auth.middleware";
+import { isValidModelId } from "@/lib/ai/client";
 
 export async function GET() {
   try {
@@ -16,6 +17,7 @@ export async function GET() {
       name: user.name,
       email: user.email,
       role: user.role,
+      preferredModel: user.preferredModel,
     });
   } catch (error) {
     return errorResponse(error);
@@ -29,6 +31,12 @@ export async function PUT(request: Request) {
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (body.name !== undefined) updateData.name = body.name;
+    if (body.preferredModel !== undefined) {
+      if (!isValidModelId(body.preferredModel)) {
+        return NextResponse.json({ error: "Invalid model" }, { status: 400 });
+      }
+      updateData.preferredModel = body.preferredModel;
+    }
 
     await db.update(users).set(updateData).where(eq(users.id, userId));
 

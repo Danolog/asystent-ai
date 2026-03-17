@@ -1,5 +1,8 @@
 import { streamText, stepCountIs } from "ai";
-import { chatModel } from "@/lib/ai/client";
+import { getModel } from "@/lib/ai/client";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import {
   saveMessage,
   getConversationMessages,
@@ -47,10 +50,11 @@ export async function POST(request: Request) {
       await updateConversationTitle(conversationId, title);
     }
 
-    // Get long-term memories and Google status in parallel
-    const [memories, googleConnected] = await Promise.all([
+    // Get long-term memories, Google status, and user preferences in parallel
+    const [memories, googleConnected, userRow] = await Promise.all([
       getRelevantMemories(userId),
       isGoogleConnected(userId).catch(() => false),
+      db.select({ preferredModel: users.preferredModel }).from(users).where(eq(users.id, userId)).then((rows) => rows[0]),
     ]);
     const memoryContext =
       memories.length > 0
@@ -101,7 +105,7 @@ Gdy tworzysz wydarzenie bez podanej godziny zakończenia, ustaw czas trwania na 
 
     // Stream AI response
     const result = streamText({
-      model: chatModel,
+      model: getModel(userRow?.preferredModel),
       stopWhen: stepCountIs(5),
       onError: ({ error }) => {
         console.error("streamText error:", error);
