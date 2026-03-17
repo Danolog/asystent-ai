@@ -180,29 +180,35 @@ export async function searchDocumentChunks(
 
   if (queryTerms.length === 0) return [];
 
-  // Get all user's document chunks
+  // Only search ready documents
   const userDocs = await db
     .select({ id: documents.id, name: documents.name })
     .from(documents)
-    .where(eq(documents.userId, userId));
+    .where(sql`${documents.userId} = ${userId} AND ${documents.status} = 'ready'`);
 
   if (userDocs.length === 0) return [];
 
   const docIds = userDocs.map((d) => d.id);
   const docNameMap = new Map(userDocs.map((d) => [d.id, d.name]));
 
-  const allChunks = await db
+  // Filter in SQL with ILIKE instead of fetching all chunks to memory
+  const likeConditions = queryTerms.map(
+    (term) => sql`LOWER(${documentChunks.content}) LIKE ${"%" + term + "%"}`
+  );
+
+  const matchingChunks = await db
     .select()
     .from(documentChunks)
     .where(
       sql`${documentChunks.documentId} IN (${sql.join(
         docIds.map((id) => sql`${id}`),
         sql`, `
-      )})`
-    );
+      )}) AND (${sql.join(likeConditions, sql` OR `)})`
+    )
+    .limit(limit * 3); // fetch more to allow scoring
 
-  // Score chunks by keyword match
-  const scored = allChunks
+  // Score by number of matching terms
+  const scored = matchingChunks
     .map((chunk) => {
       const lowerContent = chunk.content.toLowerCase();
       const score = queryTerms.reduce(
@@ -211,7 +217,6 @@ export async function searchDocumentChunks(
       );
       return { chunk, score };
     })
-    .filter((s) => s.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
