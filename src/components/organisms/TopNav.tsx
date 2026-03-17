@@ -20,7 +20,7 @@ export function TopNav() {
       <header className="hidden md:flex h-14 items-center justify-between border-b border-gray-200 px-4 dark:border-gray-700">
         <div className="flex items-center gap-2">
           <span className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-            🤖 Asystent AI
+            🌙 Luna AI
           </span>
         </div>
         <nav className="flex items-center gap-1">

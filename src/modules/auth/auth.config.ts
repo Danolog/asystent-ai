@@ -48,7 +48,7 @@ export const auth = betterAuth({
         process.env.NODE_ENV === "production"
           ? new URL(process.env.BETTER_AUTH_URL || "https://localhost").hostname
           : "localhost",
-      rpName: "Asystent AI",
+      rpName: "Luna AI",
       origin:
         process.env.BETTER_AUTH_URL || "http://localhost:3000",
     }),

@@ -13,9 +13,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Asystent AI — Twój osobisty asystent",
+  title: "Luna — Twoja osobista asystentka AI",
   description:
-    "Osobisty asystent AI z pamięcią, bazą wiedzy i powiadomieniami.",
+    "Osobista asystentka AI z pamięcią, bazą wiedzy i powiadomieniami.",
   other: {
     "apple-mobile-web-app-capable": "yes",
   },

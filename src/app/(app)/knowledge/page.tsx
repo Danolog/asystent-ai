@@ -99,7 +99,7 @@ export default function KnowledgePage() {
             Twoja baza wiedzy jest pusta
           </h3>
           <p className="mt-2 text-gray-500">
-            Wrzuć dokumenty (PDF, DOCX, TXT), a asystent będzie mógł odpowiadać na pytania o ich treść.
+            Wrzuć dokumenty (PDF, DOCX, TXT), a Luna będzie mogła odpowiadać na pytania o ich treść.
           </p>
           <button
             onClick={() => fileInputRef.current?.click()}

@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Asystent AI",
-    short_name: "Asystent",
-    description: "Osobisty asystent AI z pamięcią, bazą wiedzy i powiadomieniami.",
+    name: "Luna AI",
+    short_name: "Luna",
+    description: "Osobista asystentka AI z pamięcią, bazą wiedzy i powiadomieniami.",
     display: "standalone",
     start_url: "/chat",
     theme_color: "#6366f1",

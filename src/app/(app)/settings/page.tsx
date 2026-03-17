@@ -279,12 +279,12 @@ function SettingsContent() {
       {activeTab === "memory" && (
         <div>
           <p className="mb-4 text-sm text-gray-500">
-            Rzeczy które asystent o Tobie zapamiętał. Możesz usunąć dowolne wspomnienie.
+            Rzeczy które Luna o Tobie zapamiętała. Możesz usunąć dowolne wspomnienie.
           </p>
           {memories.length === 0 ? (
             <div className="rounded-lg border-2 border-dashed border-gray-300 p-8 text-center">
               <Brain className="mx-auto h-10 w-10 text-gray-400" />
-              <p className="mt-3 text-gray-500">Asystent jeszcze nic o Tobie nie zapamiętał.</p>
+              <p className="mt-3 text-gray-500">Luna jeszcze nic o Tobie nie zapamiętała.</p>
               <p className="text-sm text-gray-400">Powiedz mu &quot;zapamiętaj, że...&quot; w czacie.</p>
             </div>
           ) : (

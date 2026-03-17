@@ -53,7 +53,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            🤖 Asystent AI
+            🌙 Luna AI
           </h1>
           <p className="mt-2 text-sm text-gray-500">
             {isRegister ? "Utwórz konto" : "Zaloguj się"}

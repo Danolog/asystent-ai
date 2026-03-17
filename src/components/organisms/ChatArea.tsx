@@ -138,7 +138,7 @@ export function ChatArea({ conversationId, initialMessages }: ChatAreaProps) {
           <div className="flex h-full items-center justify-center px-4">
             <div className="text-center">
               <h2 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200">
-                👋 Cześć! W czym mogę Ci pomóc?
+                🌙 Cześć! Jestem Luna. W czym mogę Ci pomóc?
               </h2>
               <p className="mt-2 text-sm md:text-base text-gray-500">
                 Zadaj pytanie, wrzuć dokument lub poproś o wyszukanie w
