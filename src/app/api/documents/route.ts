@@ -99,17 +99,13 @@ async function extractText(file: File): Promise<string> {
     }
   }
 
-  // DOCX — basic text extraction (XML-based)
+  // DOCX — use mammoth for proper text extraction
   if (file.name.endsWith(".docx")) {
     try {
-      const text = await file.text();
-      // DOCX is a ZIP with XML — extract raw text content
-      const cleanText = text
-        .replace(/<[^>]+>/g, " ")
-        .replace(/[^\x20-\x7E\u00C0-\u024F\n\r\t ]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-      return cleanText || `[DOCX: ${file.name} — wymaga dedykowanego parsera]`;
+      const mammoth = await import("mammoth");
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const result = await mammoth.extractRawText({ buffer });
+      return result.value || `[DOCX: ${file.name} — brak tekstu]`;
     } catch {
       return `[DOCX: ${file.name} — nie udało się wyekstrahować tekstu]`;
     }

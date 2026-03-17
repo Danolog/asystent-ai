@@ -115,40 +115,55 @@ export async function reprocessDocument(documentId: UUID, userId: UUID) {
     .set({ status: "processing", chunkCount: 0, errorMessage: null, updatedAt: new Date() })
     .where(eq(documents.id, documentId));
 
-  // Re-fetch content from Blob and reprocess
-  const response = await fetch(doc.blobUrl);
-  if (!response.ok) {
+  try {
+    // Re-fetch content from Blob
+    const response = await fetch(doc.blobUrl);
+    if (!response.ok) {
+      throw new Error(`Blob fetch failed: ${response.status} ${response.statusText}`);
+    }
+
+    let textContent: string;
+    if (doc.mimeType === "application/pdf") {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pdfParse = require("pdf-parse") as (buffer: Buffer) => Promise<{ text: string }>;
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const data = await pdfParse(buffer);
+      textContent = data.text || "";
+    } else if (doc.name.endsWith(".docx") || doc.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+      const mammoth = await import("mammoth");
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const result = await mammoth.extractRawText({ buffer });
+      textContent = result.value || "";
+    } else {
+      textContent = await response.text();
+    }
+
+    if (!textContent || textContent.trim().length === 0) {
+      throw new Error("Extracted text is empty");
+    }
+
+    await processDocument(documentId, textContent);
+
+    const [updated] = await db
+      .select()
+      .from(documents)
+      .where(eq(documents.id, documentId));
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      status: updated.status,
+      chunkCount: updated.chunkCount,
+    };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Reprocessing failed";
+    console.error(`Reprocess error for ${documentId}:`, msg);
     await db
       .update(documents)
-      .set({ status: "error", errorMessage: "Failed to fetch file from storage", updatedAt: new Date() })
+      .set({ status: "error", errorMessage: msg, updatedAt: new Date() })
       .where(eq(documents.id, documentId));
-    throw new Error("Failed to fetch file from storage");
+    throw error;
   }
-
-  let textContent: string;
-  if (doc.mimeType === "application/pdf") {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse") as (buffer: Buffer) => Promise<{ text: string }>;
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const data = await pdfParse(buffer);
-    textContent = data.text || "";
-  } else {
-    textContent = await response.text();
-  }
-
-  await processDocument(documentId, textContent);
-
-  const [updated] = await db
-    .select()
-    .from(documents)
-    .where(eq(documents.id, documentId));
-
-  return {
-    id: updated.id,
-    name: updated.name,
-    status: updated.status,
-    chunkCount: updated.chunkCount,
-  };
 }
 
 export async function deleteDocument(

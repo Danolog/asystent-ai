@@ -13,7 +13,11 @@ export async function POST(
     const doc = await reprocessDocument(id, userId);
     return NextResponse.json(doc);
   } catch (error) {
-    return errorResponse(error);
+    const msg = error instanceof Error ? error.message : "Reprocessing failed";
+    if (msg === "Document not found") {
+      return NextResponse.json({ error: { code: "NOT_FOUND", message: msg } }, { status: 404 });
+    }
+    return NextResponse.json({ error: { code: "PROCESSING_ERROR", message: msg } }, { status: 500 });
   }
 }
 
