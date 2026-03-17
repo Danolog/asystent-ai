@@ -120,44 +120,49 @@ export async function processDueNotifications(): Promise<{
 
   for (const notification of dueNotifications) {
     console.log(`[cron] Processing: "${notification.content}" for user ${notification.userId}, nextSendAt: ${notification.nextSendAt?.toISOString()}`);
-    const success = await sendPushToUser(notification.userId, {
-      title: "Przypomnienie",
-      body: notification.content,
-      url: "/notifications",
-    });
+    // Send via both channels in parallel
+    const [pushSuccess, telegramSuccess] = await Promise.all([
+      sendPushToUser(notification.userId, {
+        title: "Przypomnienie",
+        body: notification.content,
+        url: "/notifications",
+      }),
+      sendTelegramToUser(notification.userId, `Przypomnienie: ${notification.content}`).catch((e) => {
+        console.error("[cron] Telegram send failed:", e);
+        return false;
+      }),
+    ]);
 
-    // Also send via Telegram (best-effort, don't affect push result)
-    sendTelegramToUser(notification.userId, `Przypomnienie: ${notification.content}`).catch((e) =>
-      console.error("[cron] Telegram send failed:", e)
-    );
+    const anySuccess = pushSuccess || telegramSuccess;
 
-    if (success) {
+    if (anySuccess) {
       await logNotificationAttempt(notification.id, "sent");
       sent++;
-
-      const nextSend = calculateNextSend(
-        notification.nextSendAt!,
-        notification.recurrence as NotificationRecurrence
-      );
-
-      if (nextSend) {
-        await db
-          .update(notifications)
-          .set({ nextSendAt: nextSend, updatedAt: new Date() })
-          .where(eq(notifications.id, notification.id));
-      } else {
-        await db
-          .update(notifications)
-          .set({ isActive: false, updatedAt: new Date() })
-          .where(eq(notifications.id, notification.id));
-      }
     } else {
       await logNotificationAttempt(
         notification.id,
         "failed",
-        "Brak subskrypcji push lub wysyłka nie powiodła się"
+        "Brak subskrypcji push ani połączenia Telegram"
       );
       failed++;
+    }
+
+    // Always advance schedule regardless of delivery result
+    const nextSend = calculateNextSend(
+      notification.nextSendAt!,
+      notification.recurrence as NotificationRecurrence
+    );
+
+    if (nextSend) {
+      await db
+        .update(notifications)
+        .set({ nextSendAt: nextSend, updatedAt: new Date() })
+        .where(eq(notifications.id, notification.id));
+    } else {
+      await db
+        .update(notifications)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(notifications.id, notification.id));
     }
   }
 
