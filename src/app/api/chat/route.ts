@@ -121,7 +121,8 @@ Aktualny czas ISO: ${isoNow}.
 
 Masz dostęp do narzędzi:
 - webSearch: Wyszukaj aktualne informacje w internecie. Używaj automatycznie gdy pytanie dotyczy aktualnych danych.
-- searchDocuments: Przeszukaj bazę wiedzy użytkownika (przesłane dokumenty PDF, DOCX, TXT). Używaj gdy pytanie może dotyczyć przesłanych dokumentów, bazy wiedzy, lub gdy użytkownik mówi "sprawdź w dokumentach", "co mam w bazie wiedzy", "szukaj w moich plikach". Automatycznie używaj tego narzędzia gdy pytanie dotyczy wiedzy specjalistycznej która mogła być przesłana.
+- listDocuments: Pokaż listę dokumentów w bazie wiedzy. Używaj gdy użytkownik pyta "co mam w bazie wiedzy?", "jakie mam dokumenty?", "pokaż moje pliki".
+- searchDocuments: Przeszukaj treść dokumentów po słowach kluczowych. Używaj gdy pytanie dotyczy konkretnej informacji z przesłanych dokumentów, lub gdy użytkownik mówi "sprawdź w dokumentach", "szukaj w moich plikach". Automatycznie używaj tego narzędzia gdy pytanie dotyczy wiedzy specjalistycznej która mogła być przesłana.
 - createReminder: Ustaw przypomnienie/powiadomienie push. Używaj gdy użytkownik mówi "przypomnij mi", "ustaw przypomnienie", "powiadom mnie", lub wspomina o terminie płatności/spotkaniu. Przelicz względne daty na konkretne. ZAWSZE podawaj scheduledAt z offsetem timezone Europe/Warsaw (+01:00 zima, +02:00 lato CET/CEST). Gdy wydarzenie jest o 10:00, przypomnienie powinno być PRZED nim (np. 09:30 lub 09:00).
 - saveMemory: Zapisz ważną informację o użytkowniku (preferencje, fakty). Używaj gdy użytkownik prosi "zapamiętaj", "zapisz", lub gdy poznasz ważną informację.
 - recallMemories: Przywołaj zapamiętane informacje o użytkowniku.${googleInstructions}

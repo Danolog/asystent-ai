@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "ai";
 import { addMemory, getRelevantMemories } from "@/modules/memory/memory.service";
-import { searchDocumentChunks } from "@/modules/rag/rag.service";
+import { searchDocumentChunks, listDocuments } from "@/modules/rag/rag.service";
 import { createNotification } from "@/modules/notifications/notifications.service";
 import { isGoogleConnected } from "@/modules/google/google.service";
 import {
@@ -68,9 +68,29 @@ export function createChatTools(userId: UUID, conversationId: UUID) {
       },
     }),
 
+    listDocuments: tool({
+      description:
+        "Pokaż listę dokumentów w bazie wiedzy użytkownika. Używaj gdy użytkownik pyta 'co mam w bazie wiedzy?', 'jakie mam dokumenty?', 'pokaż moje pliki'.",
+      inputSchema: z.object({
+        reason: z.string().describe("Dlaczego listujesz dokumenty"),
+      }),
+      execute: async () => {
+        const data = await listDocuments(userId);
+        if (data.documents.length === 0)
+          return "Baza wiedzy jest pusta. Użytkownik może dodać dokumenty w zakładce Baza Wiedzy.";
+        const list = data.documents
+          .map(
+            (d, i) =>
+              `${i + 1}. **${d.name}** (${(d.sizeBytes / 1024).toFixed(0)} KB, ${d.chunkCount} chunków, status: ${d.status})`
+          )
+          .join("\n");
+        return `Dokumenty w bazie wiedzy (${data.documents.length}):\n${list}\n\nWykorzystano: ${(data.usage.usedBytes / 1024).toFixed(0)} KB / ${(data.usage.maxBytes / (1024 * 1024)).toFixed(0)} MB`;
+      },
+    }),
+
     searchDocuments: tool({
       description:
-        "Przeszukaj bazę dokumentów użytkownika (RAG). Używaj gdy pytanie może dotyczyć przesłanych dokumentów.",
+        "Przeszukaj treść dokumentów w bazie wiedzy po słowach kluczowych. Używaj gdy pytanie dotyczy konkretnej informacji z przesłanych dokumentów.",
       inputSchema: z.object({
         query: z.string().describe("Zapytanie do bazy dokumentów"),
       }),
