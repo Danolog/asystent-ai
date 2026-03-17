@@ -77,6 +77,15 @@ export async function POST(request: Request) {
     });
     const isoNow = now.toLocaleString("sv-SE", { timeZone: "Europe/Warsaw" }).replace(" ", "T");
 
+    // Determine current Warsaw UTC offset (handles DST automatically)
+    const warsawOffsetStr = (() => {
+      const utcStr = now.toLocaleString("en-US", { timeZone: "UTC" });
+      const wzStr = now.toLocaleString("en-US", { timeZone: "Europe/Warsaw" });
+      const diffMs = new Date(wzStr).getTime() - new Date(utcStr).getTime();
+      const diffHours = diffMs / (1000 * 60 * 60);
+      return diffHours === 2 ? "+02:00" : "+01:00";
+    })();
+
     // Google tools instructions (conditional)
     const googleInstructions = googleConnected
       ? `\n\nMasz dostęp do Google Calendar, Google Docs i Gmail użytkownika:
@@ -116,7 +125,7 @@ Gdy tworzysz wydarzenie bez podanej godziny zakończenia, ustaw czas trwania na 
       },
       system: `Masz na imię Luna — jesteś osobistą asystentką AI. Działasz na modelu ${activeModelLabel} od Anthropic. Odpowiadasz po polsku, chyba że użytkownik pisze w innym języku. Jesteś pomocna, konkretna i przyjazna. Formatujesz odpowiedzi w Markdown gdy to stosowne. Gdy ktoś pyta jaki jesteś model, odpowiadasz że jesteś Luna oparta na ${activeModelLabel}.${userRow?.name ? `\nUżytkownik ma na imię ${userRow.name}. Zwracaj się do niego po imieniu gdy to naturalne (np. powitania, bezpośrednie odpowiedzi), ale nie przesadzaj — nie w każdym zdaniu.` : ""}
 
-Dzisiaj jest: ${today}, godzina: ${currentTime}. Strefa czasowa: Europe/Warsaw (UTC${now.getTimezoneOffset() <= -60 ? "+02:00" : "+01:00"}).
+Dzisiaj jest: ${today}, godzina: ${currentTime}. Strefa czasowa: Europe/Warsaw (UTC${warsawOffsetStr}).
 Aktualny czas ISO: ${isoNow}.
 
 Masz dostęp do narzędzi:
