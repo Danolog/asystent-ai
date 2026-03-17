@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Upload, Trash2, FileText, AlertCircle } from "lucide-react";
+import { Upload, Trash2, FileText, AlertCircle, RefreshCw } from "lucide-react";
 import type { DocumentListItem } from "@/types";
 
 export default function KnowledgePage() {
@@ -47,6 +47,20 @@ export default function KnowledgePage() {
     if (!confirm("Czy na pewno chcesz usunąć ten dokument?")) return;
     await fetch(`/api/documents/${id}`, { method: "DELETE" });
     await fetchDocuments();
+  };
+
+  const handleReprocess = async (id: string) => {
+    setError(null);
+    try {
+      const res = await fetch(`/api/documents/${id}`, { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message || "Reprocessing failed");
+      }
+      await fetchDocuments();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Reprocessing failed");
+    }
   };
 
   const formatBytes = (bytes: number) => {
@@ -131,12 +145,23 @@ export default function KnowledgePage() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => handleDelete(doc.id)}
-                className="rounded p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                {(doc.status === "processing" || doc.status === "error") && (
+                  <button
+                    onClick={() => handleReprocess(doc.id)}
+                    title="Przetwórz ponownie"
+                    className="rounded p-2 text-gray-400 hover:bg-indigo-50 hover:text-indigo-500"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDelete(doc.id)}
+                  className="rounded p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           ))}
         </div>

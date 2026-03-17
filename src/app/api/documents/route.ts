@@ -59,10 +59,9 @@ export async function POST(request: Request) {
       blob.url
     );
 
-    // Extract text and process (async — for MVP, inline)
+    // Extract text and process
     const textContent = await extractText(file);
-    // Process in background (non-blocking for response)
-    processDocument(doc.id, textContent).catch(console.error);
+    await processDocument(doc.id, textContent);
 
     return NextResponse.json(
       {

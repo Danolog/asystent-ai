@@ -63,13 +63,15 @@ export async function processDocument(documentId: UUID, textContent: string) {
     const chunks = chunkText(textContent, CHUNK_SIZE, CHUNK_OVERLAP);
 
     // Store chunks (without embeddings for now — placeholder)
-    for (let i = 0; i < chunks.length; i++) {
-      await db.insert(documentChunks).values({
-        documentId,
-        chunkIndex: i,
-        content: chunks[i],
-        embedding: "[]", // placeholder — real embeddings via Voyage API later
-      });
+    if (chunks.length > 0) {
+      await db.insert(documentChunks).values(
+        chunks.map((content, i) => ({
+          documentId,
+          chunkIndex: i,
+          content,
+          embedding: "[]", // placeholder — real embeddings via Voyage API later
+        }))
+      );
     }
 
     // Update document status
@@ -92,6 +94,61 @@ export async function processDocument(documentId: UUID, textContent: string) {
       })
       .where(eq(documents.id, documentId));
   }
+}
+
+export async function reprocessDocument(documentId: UUID, userId: UUID) {
+  const [doc] = await db
+    .select()
+    .from(documents)
+    .where(eq(documents.id, documentId));
+
+  if (!doc || doc.userId !== userId) {
+    throw new Error("Document not found");
+  }
+
+  // Delete existing chunks
+  await db.delete(documentChunks).where(eq(documentChunks.documentId, documentId));
+
+  // Reset status
+  await db
+    .update(documents)
+    .set({ status: "processing", chunkCount: 0, errorMessage: null, updatedAt: new Date() })
+    .where(eq(documents.id, documentId));
+
+  // Re-fetch content from Blob and reprocess
+  const response = await fetch(doc.blobUrl);
+  if (!response.ok) {
+    await db
+      .update(documents)
+      .set({ status: "error", errorMessage: "Failed to fetch file from storage", updatedAt: new Date() })
+      .where(eq(documents.id, documentId));
+    throw new Error("Failed to fetch file from storage");
+  }
+
+  let textContent: string;
+  if (doc.mimeType === "application/pdf") {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require("pdf-parse") as (buffer: Buffer) => Promise<{ text: string }>;
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const data = await pdfParse(buffer);
+    textContent = data.text || "";
+  } else {
+    textContent = await response.text();
+  }
+
+  await processDocument(documentId, textContent);
+
+  const [updated] = await db
+    .select()
+    .from(documents)
+    .where(eq(documents.id, documentId));
+
+  return {
+    id: updated.id,
+    name: updated.name,
+    status: updated.status,
+    chunkCount: updated.chunkCount,
+  };
 }
 
 export async function deleteDocument(
