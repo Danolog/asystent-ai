@@ -1,14 +1,45 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Sidebar } from "@/components/organisms/Sidebar";
 import { ChatArea } from "@/components/organisms/ChatArea";
+
+const STORAGE_KEY = "luna-last-conversation";
 
 export default function ChatPage() {
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
   >(null);
   const [key, setKey] = useState(0);
+  const [restored, setRestored] = useState(false);
+
+  // Restore last conversation from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) {
+      setRestored(true);
+      return;
+    }
+    // Verify conversation still exists
+    fetch(`/api/conversations/${saved}`)
+      .then((res) => {
+        if (res.ok) {
+          setActiveConversationId(saved);
+          setKey((k) => k + 1);
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      })
+      .catch(() => localStorage.removeItem(STORAGE_KEY))
+      .finally(() => setRestored(true));
+  }, []);
+
+  // Persist active conversation to localStorage
+  useEffect(() => {
+    if (activeConversationId) {
+      localStorage.setItem(STORAGE_KEY, activeConversationId);
+    }
+  }, [activeConversationId]);
 
   const handleNewConversation = useCallback(async () => {
     try {
@@ -32,6 +63,10 @@ export default function ChatPage() {
     setKey((k) => k + 1);
   }, []);
 
+  if (!restored) {
+    return null;
+  }
+
   return (
     <div className="relative flex flex-1 overflow-hidden">
       <Sidebar
@@ -46,7 +81,7 @@ export default function ChatPage() {
           <div className="flex flex-1 items-center justify-center px-4">
             <div className="text-center">
               <h2 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200">
-                👋 Witaj w Asystencie AI!
+                🌙 Witaj! Jestem Luna.
               </h2>
               <p className="mt-2 text-sm md:text-base text-gray-500">
                 Kliknij &quot;Nowa rozmowa&quot; aby rozpocząć.

@@ -43,6 +43,7 @@ export function Sidebar({
     const res = await fetch("/api/conversations");
     if (res.ok) setConversations(await res.json());
     if (activeConversationId === id) {
+      localStorage.removeItem("luna-last-conversation");
       onNewConversation();
     }
   };
