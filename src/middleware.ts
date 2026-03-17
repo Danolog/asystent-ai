@@ -17,7 +17,8 @@ export function middleware(request: NextRequest) {
     pathname === "/sw.js" ||
     pathname === "/manifest.webmanifest" ||
     pathname === "/api/health" ||
-    pathname.startsWith("/api/cron")
+    pathname.startsWith("/api/cron") ||
+    pathname.startsWith("/api/telegram/webhook")
   ) {
     return NextResponse.next();
   }

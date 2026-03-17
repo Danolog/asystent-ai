@@ -298,6 +298,50 @@ export const pushSubscriptions = pgTable(
   (table) => [index("idx_push_subscriptions_user_id").on(table.userId)]
 );
 
+// ============================================================
+// TELEGRAM INTEGRATION
+// ============================================================
+
+export const telegramChats = pgTable(
+  "telegram_chats",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chatId: text("chat_id").notNull().unique(),
+    telegramUserId: text("telegram_user_id").notNull(),
+    telegramUsername: text("telegram_username"),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_telegram_chats_user_id").on(table.userId),
+    index("idx_telegram_chats_chat_id").on(table.chatId),
+  ]
+);
+
+export const telegramConnectCodes = pgTable(
+  "telegram_connect_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    code: text("code").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("idx_telegram_connect_codes_code").on(table.code)]
+);
+
 export const notificationLogs = pgTable(
   "notification_logs",
   {

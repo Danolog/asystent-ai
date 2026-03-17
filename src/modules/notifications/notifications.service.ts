@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { notifications, notificationLogs } from "@/lib/db/schema";
 import { eq, and, lte } from "drizzle-orm";
 import { sendPushToUser } from "./push.service";
+import { sendTelegramToUser } from "@/modules/telegram/telegram.service";
 import type {
   UUID,
   NotificationRecurrence,
@@ -124,6 +125,11 @@ export async function processDueNotifications(): Promise<{
       body: notification.content,
       url: "/notifications",
     });
+
+    // Also send via Telegram (best-effort, don't affect push result)
+    sendTelegramToUser(notification.userId, `Przypomnienie: ${notification.content}`).catch((e) =>
+      console.error("[cron] Telegram send failed:", e)
+    );
 
     if (success) {
       await logNotificationAttempt(notification.id, "sent");

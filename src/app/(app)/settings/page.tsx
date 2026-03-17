@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Save, Trash2, Brain, Fingerprint, Plus, Shield, Link, Unlink, Calendar, FileText, Mail, Loader2, CheckCircle2, XCircle, Sparkles } from "lucide-react";
+import { Save, Trash2, Brain, Fingerprint, Plus, Shield, Link, Unlink, Calendar, FileText, Mail, Loader2, CheckCircle2, XCircle, Sparkles, MessageCircle, Copy, Check } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import type { MemoryListItem } from "@/types";
 
@@ -43,6 +43,14 @@ function SettingsContent() {
   // Google integration state
   const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Telegram integration state
+  const [telegramConnected, setTelegramConnected] = useState<boolean | null>(null);
+  const [telegramUsername, setTelegramUsername] = useState<string | undefined>();
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramCode, setTelegramCode] = useState<string | null>(null);
+  const [telegramBotUsername, setTelegramBotUsername] = useState<string | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,6 +130,23 @@ function SettingsContent() {
       } catch { /* silently fail */ }
     }
     loadGoogleStatus();
+    return () => { cancelled = true; };
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "integrations") return;
+    let cancelled = false;
+    async function loadTelegramStatus() {
+      try {
+        const res = await fetch("/api/telegram/status");
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          setTelegramConnected(data.connected);
+          setTelegramUsername(data.username);
+        }
+      } catch { /* silently fail */ }
+    }
+    loadTelegramStatus();
     return () => { cancelled = true; };
   }, [activeTab]);
 
@@ -221,6 +246,37 @@ function SettingsContent() {
       setGoogleConnected(false);
     } catch { /* silently fail */ }
     setGoogleLoading(false);
+  };
+
+  const handleConnectTelegram = async () => {
+    setTelegramLoading(true);
+    setTelegramCode(null);
+    try {
+      const res = await fetch("/api/telegram/connect", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setTelegramCode(data.code);
+        setTelegramBotUsername(data.botUsername);
+      }
+    } catch { /* silently fail */ }
+    setTelegramLoading(false);
+  };
+
+  const handleDisconnectTelegram = async () => {
+    setTelegramLoading(true);
+    try {
+      await fetch("/api/telegram/connect", { method: "DELETE" });
+      setTelegramConnected(false);
+      setTelegramUsername(undefined);
+      setTelegramCode(null);
+    } catch { /* silently fail */ }
+    setTelegramLoading(false);
+  };
+
+  const handleCopyCode = async (code: string) => {
+    await navigator.clipboard.writeText(code);
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
   };
 
   const tabs = [
@@ -462,6 +518,109 @@ function SettingsContent() {
                   <Link className="h-4 w-4" />
                 )}
                 Połącz Google
+              </button>
+            )}
+          </div>
+
+          {/* Telegram */}
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 mt-4">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-900/20">
+                <MessageCircle className="h-6 w-6 text-sky-500" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                  Telegram
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Rozmawiaj z Luna i otrzymuj powiadomienia przez Telegram
+                </p>
+              </div>
+              <div className="flex items-center">
+                {telegramConnected === null ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                ) : telegramConnected ? (
+                  <span className="flex items-center gap-1 text-xs text-green-600">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Polaczone
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-xs text-gray-400">
+                    <XCircle className="h-4 w-4" />
+                    Niepodlaczone
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {telegramConnected && telegramUsername && (
+              <p className="text-xs text-gray-500 mb-4">
+                Polaczono jako: <span className="font-medium">@{telegramUsername}</span>
+              </p>
+            )}
+
+            {telegramCode && (
+              <div className="mb-4 rounded-lg bg-sky-50 dark:bg-sky-900/20 p-4">
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                  Twoj kod polaczenia:
+                </p>
+                <div className="flex items-center gap-2 mb-3">
+                  <code className="text-2xl font-mono font-bold tracking-widest text-sky-600 dark:text-sky-400">
+                    {telegramCode}
+                  </code>
+                  <button
+                    onClick={() => handleCopyCode(telegramCode)}
+                    className="rounded p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    title="Kopiuj kod"
+                  >
+                    {codeCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                </div>
+                <ol className="text-xs text-gray-500 space-y-1 list-decimal list-inside">
+                  {telegramBotUsername && (
+                    <li>
+                      Otworz bota:{" "}
+                      <a
+                        href={`https://t.me/${telegramBotUsername}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sky-600 underline"
+                      >
+                        @{telegramBotUsername}
+                      </a>
+                    </li>
+                  )}
+                  <li>Wyslij do bota: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">/connect {telegramCode}</code></li>
+                  <li>Kod wygasa po 5 minutach</li>
+                </ol>
+              </div>
+            )}
+
+            {telegramConnected ? (
+              <button
+                onClick={handleDisconnectTelegram}
+                disabled={telegramLoading}
+                className="flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 disabled:opacity-50"
+              >
+                {telegramLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Unlink className="h-4 w-4" />
+                )}
+                Odlacz Telegram
+              </button>
+            ) : (
+              <button
+                onClick={handleConnectTelegram}
+                disabled={telegramLoading || telegramConnected === null}
+                className="flex items-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-medium text-white hover:bg-sky-600 disabled:opacity-50"
+              >
+                {telegramLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Link className="h-4 w-4" />
+                )}
+                Polacz Telegram
               </button>
             )}
           </div>

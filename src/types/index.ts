@@ -90,6 +90,24 @@ export interface Notification extends Timestamps {
   nextSendAt: ISODateString | null;
 }
 
+// ---- Telegram -----------------------------------------------
+export interface TelegramChat {
+  id: UUID;
+  userId: UUID;
+  chatId: string;
+  telegramUserId: string;
+  telegramUsername: string | null;
+  conversationId: UUID;
+  isActive: boolean;
+  createdAt: ISODateString;
+}
+
+export interface TelegramConnectionStatus {
+  connected: boolean;
+  username?: string;
+  chatId?: string;
+}
+
 // ---- API Request Types --------------------------------------
 export interface SendMessageRequest {
   conversationId: UUID;
