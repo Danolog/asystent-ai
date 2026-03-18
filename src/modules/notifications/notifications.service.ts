@@ -120,6 +120,38 @@ export async function processDueNotifications(): Promise<{
 
   for (const notification of dueNotifications) {
     console.log(`[cron] Processing: "${notification.content}" for user ${notification.userId}, nextSendAt: ${notification.nextSendAt?.toISOString()}`);
+
+    // Advance schedule BEFORE sending (idempotency guard / optimistic lock)
+    const nextSend = calculateNextSend(
+      notification.nextSendAt!,
+      notification.recurrence as NotificationRecurrence
+    );
+
+    const updateResult = nextSend
+      ? await db
+          .update(notifications)
+          .set({ nextSendAt: nextSend, updatedAt: now })
+          .where(
+            and(
+              eq(notifications.id, notification.id),
+              eq(notifications.nextSendAt, notification.nextSendAt!)
+            )
+          )
+      : await db
+          .update(notifications)
+          .set({ isActive: false, updatedAt: now })
+          .where(
+            and(
+              eq(notifications.id, notification.id),
+              eq(notifications.nextSendAt, notification.nextSendAt!)
+            )
+          );
+
+    if (updateResult.rowCount === 0) {
+      console.log(`[cron] Skipping "${notification.content}" — already claimed by another process`);
+      continue;
+    }
+
     // Send via both channels in parallel
     const [pushSuccess, telegramSuccess] = await Promise.all([
       sendPushToUser(notification.userId, {
@@ -145,24 +177,6 @@ export async function processDueNotifications(): Promise<{
         "Brak subskrypcji push ani połączenia Telegram"
       );
       failed++;
-    }
-
-    // Always advance schedule regardless of delivery result
-    const nextSend = calculateNextSend(
-      notification.nextSendAt!,
-      notification.recurrence as NotificationRecurrence
-    );
-
-    if (nextSend) {
-      await db
-        .update(notifications)
-        .set({ nextSendAt: nextSend, updatedAt: new Date() })
-        .where(eq(notifications.id, notification.id));
-    } else {
-      await db
-        .update(notifications)
-        .set({ isActive: false, updatedAt: new Date() })
-        .where(eq(notifications.id, notification.id));
     }
   }
 

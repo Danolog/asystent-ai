@@ -277,7 +277,10 @@ export const notifications = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("idx_notifications_user_id").on(table.userId)]
+  (table) => [
+    index("idx_notifications_user_id").on(table.userId),
+    index("idx_notifications_due").on(table.isActive, table.nextSendAt),
+  ]
 );
 
 export const pushSubscriptions = pgTable(
